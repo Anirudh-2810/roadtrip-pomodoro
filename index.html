@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Roadtrip Focus — Drive into deep work</title>
+<script src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@18.2.0",
+    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+    "framer-motion": "https://esm.sh/framer-motion@10.16.4?deps=react@18.2.0,react-dom@18.2.0",
+    "gsap": "https://esm.sh/gsap@3.12.5",
+    "htm": "https://esm.sh/htm@3.1.1?external=react",
+    "pixi.js": "https://esm.sh/pixi.js@7.4.2",
+    "lottie-web": "https://esm.sh/lottie-web@5.12.2"
+  }
+}
+</script>
+<style>
+  :root{--bg:#070a0e;--surface:#0f1419;--surface2:#141b22;--outline:rgba(30,42,51,0.8);--text:#e6f0e6;--muted:#7a8a7a;--accent:#00e69a;--r:14px;--fs-bg:#121212;--fs-road:#1a1a1a;--fs-neon:#00FF66;--fs-mountain:#0d1a25;--fs-tree:#1e5b30;--fs-mileage:#ffffff;--fs-star:#ffffff;--fs-sky-top:#0a0e14;--fs-sky-horizon:#121820}
+  *{box-sizing:border-box} html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Inter,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+  #root{height:100%;display:flex;flex-direction:column}
+  header{padding:14px 16px 10px;text-align:center;position:relative}
+  header h1{margin:0;font-size:19px;letter-spacing:1.4px;color:var(--accent);font-weight:800}
+  header p{margin:3px 0 0;color:var(--muted);font-size:11px;letter-spacing:0.3px}
+  .phase{margin-top:6px;color:#9ab0a0;font-size:12px;font-weight:600}
+  /* traffic removed — mac look without dots, header centered like Apple Music */
+  .canvas-wrap{flex:1;position:relative;margin:8px 14px;background:#0a0a0a;border-radius:16px;overflow:hidden;border:1px solid var(--outline);box-shadow:0 20px 40px rgba(0,0,0,0.55)}
+  canvas{width:100%;height:100%;display:block}
+  .hud{position:absolute;inset:0;pointer-events:none}
+  .hud-card{position:absolute;background:rgba(15,20,25,0.88);backdrop-filter:blur(16px) saturate(1.2);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(30,42,51,0.9);border-radius:12px;padding:8px 12px;display:flex;gap:10px;align-items:center;pointer-events:auto;box-shadow:0 8px 24px rgba(0,0,0,0.45)}
+  .hud-top{top:12px;left:50%;transform:translateX(-50%);min-width:520px;max-width:92%;justify-content:space-between}
+  .hud-bottom{bottom:16px;left:50%;transform:translateX(-50%);min-width:640px;max-width:94%;justify-content:space-between;padding:10px 14px}
+  .intent{margin:8px 14px;display:flex;gap:10px;align-items:center;background:var(--surface);border:1px solid var(--outline);border-radius:10px;padding:8px 12px}
+  .intent label{color:var(--muted);font-weight:700;font-size:12px;min-width:44px}
+  .intent input{flex:1;background:var(--surface);border:1px solid var(--outline);color:var(--text);border-radius:8px;padding:7px 10px;outline:none}
+  .intent input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,230,154,0.15)}
+  .route{margin:0 14px 8px;display:flex;gap:10px;align-items:center;background:var(--surface);border:1px solid var(--outline);border-radius:10px;padding:8px 12px}
+  .route select{background:var(--surface2);color:var(--text);border:1px solid var(--outline);border-radius:8px;padding:6px 10px}
+  .timer-row{display:flex;gap:12px;margin:8px 14px;align-items:stretch}
+  .time-card{flex:0 0 240px;background:var(--surface);border:1px solid var(--outline);border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px;box-shadow:0 4px 16px rgba(0,0,0,0.3)}
+  .time{font-family:ui-monospace,Consolas,monospace;font-size:38px;font-weight:800;color:var(--accent);letter-spacing:1px}
+  .cap{color:var(--muted);font-size:11px;margin-top:2px}
+  .progress-card{flex:1;background:var(--surface);border:1px solid var(--outline);border-radius:12px;padding:14px;display:flex;flex-direction:column;justify-content:center;gap:8px}
+  .bar{height:8px;background:var(--surface2);border-radius:999px;overflow:hidden;border:1px solid var(--outline);position:relative}
+  .fill{height:100%;background:var(--accent);width:0%;border-radius:999px}
+  .controls{display:flex;gap:10px;justify-content:center;margin:10px 14px}
+  .btn{padding:10px 16px;border-radius:10px;border:1px solid var(--outline);background:var(--surface);color:var(--text);cursor:pointer;font-weight:700;font-size:13px;transition:transform 0.12s}
+  .btn:active{transform:scale(0.97)}
+  .btn.primary{background:var(--accent);color:#00140e;border-color:var(--accent);box-shadow:0 4px 12px rgba(0,230,154,0.25)}
+  .btn:disabled{opacity:0.5;cursor:not-allowed}
+  .sound{display:flex;gap:10px;align-items:center;justify-content:center;margin:6px 14px;color:var(--muted);font-size:12px;background:var(--surface);border:1px solid var(--outline);border-radius:10px;padding:8px 12px}
+  .sound select{background:var(--surface2);color:var(--text);border:1px solid var(--outline);border-radius:6px;padding:4px 8px}
+  .quick{display:flex;gap:8px;justify-content:center;margin:6px 14px}
+  .pill{padding:6px 14px;border-radius:999px;background:var(--surface);border:1px solid var(--outline);color:var(--text);cursor:pointer;font-size:12px;font-weight:600}
+  .pill.active{background:var(--accent);color:#00140e;border-color:var(--accent);box-shadow:0 2px 8px rgba(0,230,154,0.2)}
+  .quote{text-align:center;color:var(--muted);font-style:italic;font-size:12px;margin:10px 14px;opacity:0.9}
+  .stats{display:flex;justify-content:space-between;align-items:center;margin:6px 14px 10px;color:var(--muted);font-size:11px}
+  .stats button{padding:5px 10px;border-radius:8px;background:var(--surface);border:1px solid var(--outline);color:var(--accent);cursor:pointer}
+  .top-actions{position:absolute;top:12px;right:14px;display:flex;gap:8px}
+  .top-actions button{padding:6px 12px;border-radius:8px;background:var(--surface);border:1px solid var(--outline);color:var(--text);cursor:pointer;font-size:12px;font-weight:700}
+  @media (max-width:720px){.timer-row{flex-direction:column}.time-card{flex:1}.hud-top,.hud-bottom{min-width:92%}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div id="lottie" style="position:fixed;left:50%;top:42%;width:140px;height:140px;transform:translate(-50%,-50%);pointer-events:none;z-index:10;display:none"></div>
+<script type="module">
+import React, {useEffect, useRef, useState, useMemo} from "react"
+import {createRoot} from "react-dom/client"
+import {motion, AnimatePresence} from "framer-motion"
+import gsap from "gsap"
+import htm from "htm"
+import * as PIXI from "pixi.js"
+import lottie from "lottie-web"
+const html = htm.bind(React.createElement)
+
+const ROUTES = [
+  ["Coastal Hop",25,"Quick sprint — one focused stretch"],
+  ["Desert Stretch",50,"Deep work block — stay with it"],
+  ["Mountain Pass",90,"Long haul — settle in"],
+  ["Cross-Country",120,"Marathon — the scenic way"],
+]
+const SCENERY_SPEED = 18
+
+function useCurve(seed){
+  return useMemo(()=>{
+    let s = seed
+    const rnd = ()=> (s = (s*16807)%2147483647, (s-1)/2147483646)
+    return [42+rnd()*26, 14+rnd()*12, 0.028+rnd()*0.02, 0.11+rnd()*0.06, rnd()*6.28, rnd()*6.28]
+  },[seed])
+}
+
+function App(){
+  const [intent,setIntent]=useState("")
+  const [routeName,setRouteName]=useState(ROUTES[0][0])
+  const [routeMin,setRouteMin]=useState(ROUTES[0][1])
+  const [remaining,setRemaining]=useState(ROUTES[0][1]*60)
+  const [total,setTotal]=useState(ROUTES[0][1]*60)
+  const [isRunning,setIsRunning]=useState(false)
+  const [isPaused,setIsPaused]=useState(false)
+  const [isFullscreen,setIsFullscreen]=useState(false)
+  const [seed,setSeed]=useState(Math.random())
+  const [dist,setDist]=useState(0)
+  const [showDone,setShowDone]=useState(false)
+  const [doneInfo,setDoneInfo]=useState(null)
+  const [noiseKind,setNoiseKind]=useState("brown")
+  const [humOn,setHumOn]=useState(true)
+  const [vol,setVol]=useState(0.12)
+  const canvasRef=useRef(null)
+  const audioRef=useRef(null)
+  const progress = total? (total-remaining)/total : 0
+  const params=useCurve(seed)
+  const roadCenter=(d)=> params[0]*Math.sin(d*params[2]+params[4]) + params[1]*Math.sin(d*params[3]+params[5])
+  const persp=(t)=> 1 - Math.pow(1-t,1.65)
+
+  // audio
+  useEffect(()=>{
+    let ctx, src, gain
+    const init = ()=>{
+      if(audioRef.current) return
+      try{
+        ctx = new (window.AudioContext||window.webkitAudioContext)()
+        const bufferSize=ctx.sampleRate*4
+        const buf=ctx.createBuffer(2, bufferSize, ctx.sampleRate)
+        for(let ch=0; ch<2; ch++){
+          const data=buf.getChannelData(ch)
+          // generate brown/pink/white/rain
+          let b0,b1,b2,b3,b4,b5,b6
+          b0=b1=b2=b3=b4=b5=b6=0
+          let brown=0
+          for(let i=0;i<bufferSize;i++){
+            const white=Math.random()*2-1
+            // pink
+            b0=0.99886*b0+white*0.0555179
+            b1=0.99332*b1+white*0.0750759
+            b2=0.96900*b2+white*0.153852
+            b3=0.86650*b3+white*0.3104856
+            b4=0.55000*b4+white*0.5329522
+            b5=-0.7616*b5-white*0.016898
+            const pink=(b0+b1+b2+b3+b4+b5+b6+white*0.5362)*0.11
+            b6=white*0.115926
+            // brown
+            brown = brown + white*0.02
+            brown *= 0.998
+            const kind=noiseKind
+            let v = kind==="white"? white : kind==="pink"? pink : kind==="brown"? brown*3.5 : pink*0.8 + (Math.random()<0.002? (Math.random()*0.5):0)
+            // hum
+            const t=i/ctx.sampleRate
+            const drone = humOn? (0.35*Math.sin(2*Math.PI*55*t)+0.18*Math.sin(2*Math.PI*110*t))*0.6 : 0
+            data[i]= (v*0.45 + drone*0.5) * vol * 0.9
+          }
+        }
+        src=ctx.createBufferSource(); src.buffer=buf; src.loop=true
+        gain=ctx.createGain(); gain.gain.value=1
+        src.connect(gain).connect(ctx.destination)
+        audioRef.current={ctx,src,gain}
+      }catch(e){ console.log("audio fail",e) }
+    }
+    const start = ()=>{
+      if(!audioRef.current) init()
+      if(audioRef.current && audioRef.current.ctx.state==="suspended") audioRef.current.ctx.resume()
+      try{ audioRef.current.src.start(0) }catch{}
+    }
+    const stop = ()=>{ try{ audioRef.current.src.stop(); audioRef.current.ctx.close(); audioRef.current=null }catch{} }
+    if(isRunning && !isPaused){ start() } else { stop() }
+    return ()=>{}
+  },[isRunning,isPaused,noiseKind,humOn,vol])
+
+  // timer
+  useEffect(()=>{
+    if(!isRunning||isPaused) return
+    const id=setInterval(()=> setRemaining(r=>{ if(r<=1){ setIsRunning(false); onFinish(); return 0 } return r-1 }),1000)
+    return ()=>clearInterval(id)
+  },[isRunning,isPaused])
+  // time-driven dist for proper 60fps (not 1fps progress stair-step)
+  const t0Ref = React.useRef(performance.now())
+  const pausedRef = React.useRef(0)
+  const pausedAt = React.useRef(null)
+  useEffect(()=>{
+    if(isRunning && !isPaused){
+      if(pausedAt.current) { pausedRef.current += performance.now() - pausedAt.current; pausedAt.current=null }
+    } else if(isPaused){
+      pausedAt.current = performance.now()
+    }
+  },[isPaused, isRunning])
+  useEffect(()=>{
+    let raf
+    const tick=()=>{
+      if(isRunning && !isPaused){
+        const elapsed=(performance.now() - t0Ref.current - pausedRef.current)/1000
+        const target=Math.min(elapsed*SCENERY_SPEED*0.35, total*SCENERY_SPEED*0.35)
+        setDist(prev=> prev + (target - prev)*0.14)
+      }
+      raf=requestAnimationFrame(tick)
+    }
+    raf=requestAnimationFrame(tick)
+    return ()=>cancelAnimationFrame(raf)
+  },[isRunning, isPaused, total])
+  // keep t0 in sync on start
+  useEffect(()=>{
+    if(isRunning && !isPaused){
+      // if just started, reset t0
+      if(remaining===total) { t0Ref.current=performance.now(); pausedRef.current=0; setDist(0) }
+    }
+  },[isRunning])
+  // sync isFullscreen state with document fullscreen API
+  useEffect(()=>{
+    const handleChange = () => setIsFullscreen(!!document.fullscreenElement)
+    handleChange()
+    document.addEventListener("fullscreenchange", handleChange)
+    return () => document.removeEventListener("fullscreenchange", handleChange)
+  }, [])
+
+  // draw
+  useEffect(()=>{
+    const canvas=canvasRef.current
+    if(!canvas) return
+    const ctx=canvas.getContext("2d")
+    let raf
+    let phase=0
+    const draw=()=>{
+      const dpr=window.devicePixelRatio||1
+      const w=canvas.clientWidth*dpr, h=canvas.clientHeight*dpr
+      if(canvas.width!==w||canvas.height!==h){ canvas.width=w; canvas.height=h }
+      const W=w,H=h, horizon=H*0.28, d=dist
+      phase=(phase+0.016*0.07*SCENERY_SPEED)%1
+      ctx.clearRect(0,0,W,H)
+      const grad=ctx.createLinearGradient(0,0,0,horizon)
+      grad.addColorStop(0,"#060a0e"); grad.addColorStop(1,"#0e1e18")
+      ctx.fillStyle=grad; ctx.fillRect(0,0,W,horizon)
+      ctx.fillStyle="#a0a0a0"
+      for(let sx=0;sx<W;sx+=47*dpr){
+        const hsh=(sx*7+Math.floor(seed*1000))%255
+        if(hsh<38){
+          const tw=0.6+0.4*Math.sin(d*0.02+sx*0.013)
+          if(tw>0.4){ const sy=(hsh%(horizon-8*dpr))+3*dpr; ctx.globalAlpha=0.6+0.4*tw; ctx.beginPath(); ctx.arc(sx,sy,1*dpr,0,Math.PI*2); ctx.fill() }
+        }
+      }
+      ctx.globalAlpha=1
+const hills=[
+      ["#051510",0.22,420*dpr,22*dpr,0.018/dpr],["#0a201a",0.45,360*dpr,18*dpr,0.024/dpr],["#153025",0.85,300*dpr,14*dpr,0.032/dpr]
+    ]
+hills.forEach(([col,speed,tile,amp,freq])=>{
+        const off=(-d*speed)%tile
+        ctx.fillStyle=col; ctx.beginPath(); ctx.moveTo(-tile+off-20*dpr, horizon)
+        for(let x=-tile+off-20*dpr;x<W+tile+20*dpr;x+=10*dpr){
+          const bump=amp*Math.sin((x+off*0.7)*freq)+amp*0.45*Math.sin((x+off*0.4)*freq*2.3+1.7)
+          ctx.lineTo(x, horizon - Math.max(0,bump))
+        }
+        ctx.lineTo(W+tile+20*dpr,horizon); ctx.lineTo(-tile+off-20*dpr,horizon); ctx.closePath(); ctx.fill()
+      })
+      ctx.fillStyle="rgba(10,20,16,0.5)"; for(let i=0;i<6;i++) ctx.fillRect(0,horizon+i*2*dpr,W,2*dpr)
+      ctx.strokeStyle="#1e2e28"; ctx.beginPath(); ctx.moveTo(0,horizon); ctx.lineTo(W,horizon); ctx.stroke()
+      const n=18, visible=140, halfNear=260*dpr*(W/620), halfFar=42*dpr*(W/620)
+      const centers=[], ys=[], halfs=[]
+      for(let i=0;i<n;i++){
+        const tlin=i/(n-1), pt=persp(tlin)
+        const depth=(1-pt)*visible, wd=d+depth
+        let cx=W/2 + roadCenter(wd)
+        const maxOff= pt<0.15 ? W/2-halfFar-18*dpr : W/2-30*dpr
+        cx=Math.max(W/2-maxOff, Math.min(W/2+maxOff, cx))
+        centers.push(cx); ys.push(horizon*(1-pt)+H*pt); halfs.push(halfFar*(1-pt)+halfNear*pt)
+      }
+      ctx.fillStyle="#1a1a1a"; ctx.strokeStyle="#2a2a2a"; ctx.lineWidth=1*dpr
+      ctx.beginPath(); for(let i=0;i<n;i++) ctx.lineTo(centers[i]-halfs[i], ys[i]); for(let i=n-1;i>=0;i--) ctx.lineTo(centers[i]+halfs[i], ys[i]); ctx.closePath(); ctx.fill(); ctx.stroke()
+      ctx.strokeStyle="#3a3a3a"; ctx.lineWidth=2*dpr
+      ;[-1,1].forEach(s=>{ ctx.beginPath(); for(let i=0;i<n;i++){ const x=centers[i]+s*(halfs[i]-8*dpr); if(i==0) ctx.moveTo(x,ys[i]); else ctx.lineTo(x,ys[i]) } ctx.stroke() })
+      ctx.strokeStyle="#00e69a"
+      const segLens=[]; for(let i=0;i<n-1;i++){ const dx=centers[i+1]-centers[i], dy=ys[i+1]-ys[i]; segLens.push(Math.hypot(dx,dy)) }
+      const dash=14*dpr, gap=14*dpr, pat=dash+gap, off=phase*pat
+      let acc=0
+      for(let i=0;i<n-1;i++){
+        const seg=segLens[i], a=acc, b=acc+seg
+        const k0=Math.floor((a-off)/pat), k1=Math.ceil((b-off)/pat)
+        for(let k=k0;k<=k1;k++){
+          const d0=k*pat+off, d1=d0+dash, cs=Math.max(a,d0), ce=Math.min(b,d1)
+          if(ce-cs<2*dpr) continue
+          const f0=(cs-a)/seg, f1=(ce-a)/seg
+          const x0=centers[i]*(1-f0)+centers[i+1]*f0, y0=ys[i]*(1-f0)+ys[i+1]*f0
+          const x1=centers[i]*(1-f1)+centers[i+1]*f1, y1=ys[i]*(1-f1)+ys[i+1]*f1
+          const tmid=(i+0.5)/n, lw=Math.max(1*dpr, 3.2*dpr*(0.35+0.65*tmid))
+          ctx.lineWidth=lw; ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x1,y1); ctx.stroke()
+        }
+        acc+=seg
+      }
+      // scenery
+      const spacing=18, start=Math.floor((d-12)/spacing)*spacing, end=d+visible+18
+      for(let wd=start; wd<end; wd+=spacing){
+        const depth=wd-d
+        if(depth<4||depth>visible-2) continue
+        const t=1-depth/visible
+        const hsh=(Math.floor(seed*100000)+Math.floor(wd))%100000 & 0xFFFFFF
+        let kind=hsh%10
+        if(kind<=2 && (hsh>>8)%100>=60) kind=9
+        if(kind==3 && (hsh>>12)%100>=50) kind=9
+        if(kind>7 && kind!==9) continue
+        if(kind==9) continue
+        const idxf=t*(n-1), lo=Math.floor(idxf), hi=Math.min(n-1,lo+1), f=idxf-lo
+        const cx=centers[lo]*(1-f)+centers[hi]*f, half=halfs[lo]*(1-f)+halfs[hi]*f, y0=ys[lo]*(1-f)+ys[hi]*f
+        const scale=0.28+0.72*t, jitter=((hsh>>4)%11)-5, side=(hsh&1? -1:1)
+        const baseX=cx+side*(half+14*scale*dpr+jitter*scale*0.5*dpr)
+        if(baseX<6*dpr||baseX>W-6*dpr) continue
+        if(kind<=2){
+          const trW=2*scale*dpr, trH=10*scale*dpr, folH=18*scale*dpr, folW=14*scale*dpr
+          ctx.fillStyle = "#2b1a0e";
+          ctx.fillRect(baseX-trW, y0-trH, 2*trW, trH)
+          ctx.fillStyle = "#1c3a2a";
+          ctx.beginPath(); ctx.moveTo(baseX, y0-trH-folH); ctx.lineTo(baseX-folW, y0-trH); ctx.lineTo(baseX+folW, y0-trH); ctx.closePath(); ctx.fill()
+          ctx.fillStyle="#2b1a0e";
+          ctx.beginPath(); ctx.moveTo(baseX, y0-trH-folH); ctx.lineTo(baseX-folW*0.6, y0-trH-folH*0.55); ctx.lineTo(baseX+folW*0.6, y0-trH-folH*0.55); ctx.closePath(); ctx.fill()
+        } else if(kind==3){
+          // bush — rounded cluster
+          bw = int(12 * scale)
+          bh = int(8 * scale)
+          bush_fill = "#1e3320"
+          ctx.create_oval(base_x - bw, y0 - bh, base_x + bw, y0,
+                          fill=bush_fill, outline="#24402e")
+          ctx.create_oval(base_x - bw*0.6, y0 - bh*1.2, base_x + bw*0.5, y0 - bh*0.2,
+                          fill="#244a33", outline="")
+        } else if(kind>=4){
+          // pole/rock — use mountain color for fullscreen, original otherwise
+          if(isFullscreen){
+            ctx.strokeStyle="#2a2a2a"; ctx.lineWidth=2*scale*dpr; const ph=16*scale*dpr; ctx.beginPath(); ctx.moveTo(baseX,y0); ctx.lineTo(baseX,y0-ph); ctx.stroke()
+            ctx.fillStyle="#2a2a2a";
+            ctx.beginPath(); ctx.ellipse(baseX, y0-ph, 2*scale*dpr, 2*scale*dpr,0,0,Math.PI*2); ctx.fill()
+          } else {
+            ctx.strokeStyle="#3a3a3a"; ctx.lineWidth=2*scale*dpr; const ph=16*scale*dpr; ctx.beginPath(); ctx.moveTo(baseX,y0); ctx.lineTo(baseX,y0-ph); ctx.stroke()
+            ctx.fillStyle="#c9a86a"; ctx.beginPath(); ctx.ellipse(baseX, y0-ph, 2*scale*dpr, 2*scale*dpr,0,0,Math.PI*2); ctx.fill()
+          }
+        }
+      }
+      // mini car
+      const nearCx=centers[n-1], lean=(centers[n-1]-centers[n-3])*0.10, bob=0.35*Math.sin(Date.now()*0.0022+progress*3)
+      let steer=0; if(n>=6) steer=(roadCenter(d+22)-roadCenter(d+6))*0.05
+      const scaleCar=0.85, carW=14*scaleCar*dpr, carH=8*scaleCar*dpr
+      const carX=Math.max(carW+6*dpr, Math.min(W-carW-6*dpr, nearCx+lean+steer)), carY=H-14*dpr+bob*dpr
+      ctx.fillStyle="rgba(0,0,0,0.6)"; ctx.beginPath(); ctx.ellipse(carX, carY+carH-1*dpr, carW, 3*dpr,0,0,Math.PI*2); ctx.fill()
+      ctx.fillStyle="#ffcc33"; ctx.strokeStyle="#ffaa00"; ctx.lineWidth=1*dpr
+      ctx.beginPath(); ctx.moveTo(carX-carW, carY-2*dpr); ctx.lineTo(carX+carW, carY-2*dpr); ctx.lineTo(carX+carW-2*dpr, carY+carH-2*dpr); ctx.lineTo(carX-carW+2*dpr, carY+carH-2*dpr); ctx.closePath(); ctx.fill(); ctx.stroke()
+      ctx.fillStyle="#1a1e1c"; ctx.beginPath(); ctx.moveTo(carX-carW+4*dpr, carY-carH+1*dpr); ctx.lineTo(carX+carW-4*dpr, carY-carH+1*dpr); ctx.lineTo(carX+carW-6*dpr, carY-2*dpr); ctx.lineTo(carX-carW+6*dpr, carY-2*dpr); ctx.closePath(); ctx.fill()
+      ctx.fillStyle="#7ec8e3"; ctx.beginPath(); ctx.moveTo(carX-carW+6*dpr, carY-carH+2*dpr); ctx.lineTo(carX+carW-6*dpr, carY-carH+2*dpr); ctx.lineTo(carX+carW-7*dpr, carY-3*dpr); ctx.lineTo(carX-carW+7*dpr, carY-3*dpr); ctx.closePath(); ctx.fill()
+      ctx.fillStyle="#0a0a0a"; for(let dx of [-carW+4*dpr, carW-4*dpr]) for(let dy of [-1*dpr, carH-4*dpr]){ ctx.beginPath(); ctx.arc(carX+dx, carY+dy, 2*dpr,0,Math.PI*2); ctx.fill() }
+      ctx.fillStyle="#fff7b2"; ctx.beginPath(); ctx.ellipse(carX-carW+2*dpr, carY-0.5*dpr, 1.5*dpr,1.2*dpr,0,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.ellipse(carX+carW-2*dpr, carY-0.5*dpr, 1.5*dpr,1.2*dpr,0,0,Math.PI*2); ctx.fill()
+      raf=requestAnimationFrame(draw)
+    }
+    raf=requestAnimationFrame(draw)
+    return ()=>cancelAnimationFrame(raf)
+  },[dist, progress, seed])
+
+  function onFinish(){
+    const el=document.getElementById("lottie")
+    if(el){ try{ lottie.loadAnimation({container:el, renderer:"svg", loop:false, autoplay:true, path:"https://assets2.lottiefiles.com/packages/lf20_jcikwtux.json"}) ; el.style.display="block"; setTimeout(()=>el.style.display="none",2200)}catch{} }
+    const data={started_at:new Date().toISOString(), finished_at:new Date().toISOString(), duration_min:Math.round(total/60), intent:intent||"(no intent)", route:routeName, completed:true, sound_on:humOn}
+    setDoneInfo(data); setShowDone(true); setTimeout(()=>setShowDone(false), 5000)
+    if(window.pywebview && window.pywebview.api && window.pywebview.api.save_session){ window.pywebview.api.save_session(data) }
+    else{ try{ const arr=JSON.parse(localStorage.getItem("rf_sessions")||"[]"); arr.push(data); localStorage.setItem("rf_sessions",JSON.stringify(arr.slice(-50))) }catch{} }
+  }
+  const fmt=(s)=> String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0")
+  return html`
+    <div style=${{height:"100%",display:"flex",flexDirection:"column"}}>
+      <header>
+
+        <h1>ROADTRIP FOCUS</h1><p>pick a route · set your intent · drive</p>
+        <div class="phase">${isRunning? `On the road — ${routeName}`: "Ready to roll"}</div>
+        <button onClick=${()=>{ const el=document.documentElement; if(!document.fullscreenElement) el.requestFullscreen?.().catch(()=>{ el.style.position="fixed"; el.style.inset="0" }); else document.exitFullscreen?.() }} style=${{position:"absolute",top:"12px",right:"14px",padding:"6px 12px",borderRadius:"8px",background:"var(--surface)",border:"1px solid var(--outline)",color:"var(--text)",fontSize:"12px",fontWeight:"700",cursor:"pointer",display: isFullscreen ? "none" : "block"}}>Fullscreen</button>
+      </header>
+
+      <div class="canvas-wrap"><canvas ref=${canvasRef} style=${{width:"100%",height:"100%"}}></canvas>
+        <${AnimatePresence}>
+          $${showDone ? html`<${motion.div} key="done" initial=${{x:400, opacity:0}} animate=${{x:0, opacity:1}} exit=${{x:400, opacity:0}} transition=${{type:"spring", stiffness:320, damping:28}} style=${{position:"absolute", top:"16px", right:"16px", width:"340px", background:"rgba(15,20,25,0.96)", backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)", border:"1px solid rgba(30,42,51,0.9)", borderRadius:"12px", padding:"14px", zIndex:20, boxShadow:"0 20px 40px rgba(0,0,0,0.5)"}}>
+            <div style=${{color:"var(--accent)", fontWeight:800, fontSize:"13px"}}>Journey completed ✓</div>
+            <div style=${{color:"var(--text)", fontSize:"12px", marginTop:"4px"}}>${doneInfo?.route} · ${doneInfo?.duration_min} min</div>
+            <div style=${{color:"var(--muted)", fontSize:"11px", fontStyle:"italic", marginTop:"2px", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis"}}>${doneInfo?.intent}</div>
+            <div style=${{display:"flex", gap:"8px", marginTop:"10px"}}>
+              <button onClick=${()=>setShowDone(false)} style=${{flex:1, padding:"6px", borderRadius:"8px", background:"var(--accent)", color:"#00140e", border:"none", fontWeight:700, cursor:"pointer"}}>Dismiss</button>
+              <button onClick=${()=>setShowDone(false)} style=${{padding:"6px 10px", borderRadius:"8px", background:"var(--surface)", border:"1px solid var(--outline)", color:"var(--muted)", cursor:"pointer"}}>Trip Log</button>
+            </div>
+          </motion.div>` : null}
+        </${AnimatePresence}>
+        ${isFullscreen ? html`<div class="hud">
+          <div class="hud-card hud-top"><span>${intent||"No intent"}</span><span style=${{color:"var(--muted)",fontSize:"11px"}}>${routeName} · ${routeMin} min</span></div>
+          <div class="hud-card hud-bottom" style=${{position:"absolute",bottom:"12px",left:"50%",transform:"translateX(-50%)",minWidth:"640px",maxWidth:"94%",display:"flex",gap:"8px",alignItems:"center",justifyContent:"space-between",padding:"8px 12px",background:"rgba(15,20,25,0.88)",backdropFilter:"blur(16px)",border:"1px solid rgba(30,42,51,0.9)",borderRadius:"12px"}}>
+            <span style=${{color:"var(--accent)",fontFamily:"Consolas",fontWeight:"800"}}>${String(Math.floor(remaining/60)).padStart(2,"0")}:${String(remaining%60).padStart(2,"0")}</span>
+            <div style=${{flex:1,height:"6px",background:"var(--surface2)",borderRadius:"999px",overflow:"hidden",border:"1px solid var(--outline)"}}><div style=${{width:`${progress*100}%`,height:"100%",background:"var(--accent)",borderRadius:"999px"}}></div></div>
+            <button onClick=${()=>document.exitFullscreen?.()} style=${{padding:"6px 10px",borderRadius:"8px",background:"var(--surface)",border:"1px solid var(--outline)",color:"var(--text)",fontSize:"12px",fontWeight:"700",cursor:"pointer"}}>Exit</button>
+          </div>
+        </div>` : ""}
+      </div>
+      <div class="intent"><label>Intent</label><input value=${intent} onInput=${e=>setIntent(e.target.value)} placeholder='e.g. "finish problem set 3.1"'/></div>
+      <div class="route"><label>Route</label>
+        <select value=${routeName} onChange=${e=>{ const v=e.target.value; const r=ROUTES.find(x=>x[0]==v); if(r){ setRouteName(r[0]); setRouteMin(r[1]); setTotal(r[1]*60); setRemaining(r[1]*60); setSeed(Math.random()) }}}>
+          ${ROUTES.map(r=> html`<option key=${r[0]} value=${r[0]}>${r[0]} · ${r[1]} min</option>`)}
+        </select><span style=${{color:"var(--muted)",fontSize:"11px"}}>${ROUTES.find(r=>r[0]==routeName)?.[2]}</span>
+      </div>
+      <div class="timer-row">
+        <div class="time-card"><div class="time">${fmt(remaining)}</div><div class="cap">mm:ss</div></div>
+        <div class="progress-card"><div class="bar"><${motion.div} class="fill" animate=${{width:`${progress*100}%`}} transition=${{type:"spring",stiffness:120,damping:18}} /></div><div style=${{fontSize:"11px",color:"var(--muted)",marginTop:"6px"}}>${(dist/42).toFixed(1)} km · CRUISE</div></div>
+      </div>
+      <div class="controls">
+        <${motion.button} whileTap=${{scale:0.97}} class="btn primary" disabled=${isRunning} onClick=${()=>{ setIsRunning(true); setSeed(Math.random()) }}>Hit the road</motion.button>
+        <button class="btn" disabled=${!isRunning} onClick=${()=>setIsPaused(p=>!p)}>${isPaused?"Resume":"Pause"}</button>
+        <button class="btn" onClick=${()=>{ setIsRunning(false); setIsPaused(false); setRemaining(total)}}>Reset</button>
+      </div>
+      <div class="sound">
+        <label><input type="checkbox" checked=${humOn} onChange=${e=>setHumOn(e.target.checked)}/> Road hum</label>
+        <input type="range" min="0" max="0.5" step="0.02" value=${vol} onInput=${e=>setVol(parseFloat(e.target.value))}/>
+        <select value=${noiseKind} onChange=${e=>setNoiseKind(e.target.value)}>
+          <option value="brown">Brown</option><option value="pink">Pink</option><option value="white">White</option><option value="rain">Rain</option>
+        </select>
+      </div>
+      <div class="quick">${[25,50,90].map(m=> html`<button key=${m} class=${`pill ${routeMin===m?"active":""}`} onClick=${()=>{ setRouteMin(m); const r=ROUTES.find(x=>x[1]==m); if(r) setRouteName(r[0]); setTotal(m*60); setRemaining(m*60)}}>${m}m</button>`)}<button class="pill" onClick=${()=>{ const v=prompt("Custom 1-180"); const n=parseInt(v); if(n>=1&&n<=180){ setRouteName(`Custom · ${n}m`); setRouteMin(n); setTotal(n*60); setRemaining(n*60)} }}>Custom</button></div>
+      <div class="quote">“${["Focus is a muscle","Small consistent sessions beat long distracted ones","Deep work now, freedom later"][Math.floor(Date.now()/8000)%3]}”</div>
+      <div class="stats"><span>Roadtrip Focus — dark minimal</span><span>via My apps</span></div>
+    </div>
+  `
+}
+createRoot(document.getElementById("root")).render(React.createElement(App))
+</script>
+</body>
+</html>
