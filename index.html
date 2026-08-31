@@ -154,6 +154,8 @@ function App(){
   const canvasWrapRef=useRef(null)
   const hideTimerRef=useRef(null)
   const audioRef=useRef(null)
+  const isRunningRef=useRef(false)
+  const isPausedRef=useRef(false)
   const progress = total? (total-remaining)/total : 0
   const params=useCurve(seed)
   const roadCenter=(d)=> params[0]*Math.sin(d*params[2]+params[4]) + params[1]*Math.sin(d*params[3]+params[5])
@@ -249,6 +251,9 @@ function App(){
       if(remaining===total) { t0Ref.current=performance.now(); pausedRef.current=0; setDist(0) }
     }
   },[isRunning])
+  // sync refs for draw loop (phase gate) — avoids stale closure on isRunning/isPaused
+  useEffect(()=>{ isRunningRef.current=isRunning },[isRunning])
+  useEffect(()=>{ isPausedRef.current=isPaused },[isPaused])
   // sync isFullscreen — canvasWrap is the fullscreen element (YouTube style), not documentElement
   useEffect(()=>{
     const getFS = ()=> document.fullscreenElement || document.webkitFullscreenElement || null
@@ -346,7 +351,13 @@ function App(){
       const w=canvas.clientWidth*dpr, h=canvas.clientHeight*dpr
       if(canvas.width!==w||canvas.height!==h){ canvas.width=w; canvas.height=h }
       const W=w,H=h, horizon=H*0.28, d=dist
-      phase=(phase+0.016*0.07*SCENERY_SPEED)%1
+      if(isPausedRef.current){
+        // pause = freeze divider
+      } else if(isRunningRef.current){
+        phase=(phase+0.016*0.07*SCENERY_SPEED)%1
+      } else {
+        phase=(phase+0.016*0.02*SCENERY_SPEED)%1
+      }
       ctx.clearRect(0,0,W,H)
       const grad=ctx.createLinearGradient(0,0,0,horizon)
       grad.addColorStop(0,"#060a0e"); grad.addColorStop(1,"#0e1e18")
