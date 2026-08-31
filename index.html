@@ -39,30 +39,39 @@
   .canvas-wrap.fs-fallback{position:fixed;inset:0;z-index:9999;margin:0;border-radius:0;border:none;box-shadow:none;width:100vw;height:100vh}
   .canvas-wrap:fullscreen canvas,.canvas-wrap:-webkit-full-screen canvas,.canvas-wrap.fs-fallback canvas{height:100%}
   .is-fs-mode header,.is-fs-mode .intent,.is-fs-mode .route,.is-fs-mode .timer-row,.is-fs-mode .controls,.is-fs-mode .sound,.is-fs-mode .quick,.is-fs-mode .quote,.is-fs-mode .stats{display:none !important}
-  .fs-btn{position:absolute;right:12px;bottom:12px;z-index:5;width:40px;height:40px;border-radius:10px;background:rgba(15,20,25,0.88);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(30,42,51,0.9);color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 4px 16px rgba(0,0,0,0.4);transition:background 0.15s, transform 0.12s}
-  .fs-btn:hover{background:rgba(30,42,51,0.9)}
-  .fs-btn:active{transform:scale(0.95)}
-  .canvas-wrap:fullscreen .fs-btn,.canvas-wrap:-webkit-full-screen .fs-btn,.canvas-wrap.fs-fallback .fs-btn{opacity:0;pointer-events:none}
-  /* YouTube control bar */
-  .yt-wrap{position:absolute;left:0;right:0;bottom:0;pointer-events:none;display:flex;flex-direction:column;gap:0;padding:0;background:linear-gradient(transparent, rgba(0,0,0,0.62));transition:opacity 0.25s ease, transform 0.25s ease}
-  .yt-wrap.hidden{opacity:0;transform:translateY(8px);pointer-events:none}
-  .yt-bar{pointer-events:auto;display:flex;align-items:center;gap:10px;padding:10px 14px 14px;background:transparent}
-  .yt-scrub{flex:1;position:relative;height:18px;display:flex;align-items:center;cursor:pointer;pointer-events:auto}
-  .yt-track{position:absolute;left:0;right:0;height:4px;background:rgba(255,255,255,0.22);border-radius:999px;overflow:visible;transition:height 0.15s}
-  .yt-scrub:hover .yt-track,.yt-scrub.dragging .yt-track{height:6px}
-  .yt-fill{position:absolute;left:0;top:0;bottom:0;background:var(--accent);border-radius:999px;pointer-events:none}
-  .yt-thumb{position:absolute;top:50%;width:12px;height:12px;background:#fff;border:2px solid var(--accent);border-radius:50%;transform:translate(-50%,-50%) scale(0);box-shadow:0 2px 8px rgba(0,0,0,0.4);transition:transform 0.12s;pointer-events:none}
-  .yt-scrub:hover .yt-thumb,.yt-scrub.dragging .yt-thumb{transform:translate(-50%,-50%) scale(1)}
-  .yt-thumb.dragging{transform:translate(-50%,-50%) scale(1.2)}
-  .yt-tip{position:absolute;bottom:18px;transform:translateX(-50%);background:rgba(15,20,25,0.96);color:var(--text);font-size:11px;font-family:ui-monospace,Consolas,monospace;padding:3px 6px;border-radius:6px;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity 0.12s}
-  .yt-scrub:hover .yt-tip{opacity:1}
-  .yt-ctrl{pointer-events:auto;display:flex;gap:8px;align-items:center}
-  .yt-ctrl .btn{padding:8px 14px;font-size:12px;border-radius:10px}
-  .yt-ctrl .btn.primary{padding:8px 16px}
-  .yt-time{font-family:ui-monospace,Consolas,monospace;font-size:12px;font-weight:700;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,0.6);min-width:74px;text-align:right}
-  .yt-top{position:absolute;top:0;left:0;right:0;display:flex;justify-content:center;padding:12px;pointer-events:none;background:linear-gradient(rgba(0,0,0,0.45), transparent);transition:opacity 0.25s}
-  .yt-top.hidden{opacity:0;pointer-events:none}
-  .yt-top-card{background:rgba(15,20,25,0.88);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(30,42,51,0.9);border-radius:999px;padding:6px 14px;display:flex;gap:10px;align-items:center;font-size:12px;pointer-events:auto;box-shadow:0 8px 24px rgba(0,0,0,0.45)}
+  .fs-btn{display:none !important}
+  /* Apple Music / iOS glass — floating capsules (replaces YouTube bar) */
+  .yt-wrap,.yt-top,.yt-bar,.yt-ctrl,.yt-time{display:none !important} /* legacy YouTube classes hidden */
+  .am-dock{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);display:flex;flex-direction:column;gap:10px;align-items:center;pointer-events:none;transition:opacity .25s ease, transform .25s ease;z-index:6}
+  .am-dock.hidden{opacity:0;transform:translate(-50%,10px);pointer-events:none}
+  .am-scrub-pill{pointer-events:auto;width:min(520px,72vw);height:28px;padding:8px 14px;background:rgba(28,30,34,0.72);backdrop-filter:blur(24px) saturate(180%);-webkit-backdrop-filter:blur(24px) saturate(180%);border:1px solid rgba(255,255,255,0.10);border-radius:999px;box-shadow:0 12px 40px rgba(0,0,0,0.45), 0 1px 0 rgba(255,255,255,0.06) inset;display:flex;align-items:center;position:relative;cursor:pointer}
+  .am-scrub-pill .yt-track{position:absolute;left:14px;right:14px;height:3px;background:rgba(255,255,255,0.18);border-radius:999px;transition:height .14s}
+  .am-scrub-pill:hover .yt-track,.am-scrub-pill.dragging .yt-track{height:5px}
+  .am-scrub-pill .yt-fill{position:absolute;left:14px;top:50%;height:3px;transform:translateY(-50%);background:var(--accent);border-radius:999px;pointer-events:none;transition:height .14s}
+  .am-scrub-pill:hover .yt-fill,.am-scrub-pill.dragging .yt-fill{height:5px}
+  .am-scrub-pill .yt-thumb{position:absolute;top:50%;width:10px;height:10px;background:#fff;border:1.5px solid var(--accent);border-radius:50%;transform:translate(-50%,-50%) scale(0);box-shadow:0 2px 8px rgba(0,0,0,0.35);transition:transform .13s;pointer-events:none}
+  .am-scrub-pill:hover .yt-thumb,.am-scrub-pill.dragging .yt-thumb{transform:translate(-50%,-50%) scale(1)}
+  .am-scrub-pill.dragging .yt-thumb{transform:translate(-50%,-50%) scale(1.15)}
+  .am-scrub-pill .yt-tip{position:absolute;bottom:32px;transform:translateX(-50%);background:rgba(22,26,30,0.94);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);color:var(--text);font-size:10px;font-family:ui-monospace,Consolas,monospace;padding:4px 7px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .12s}
+  .am-scrub-pill:hover .yt-tip{opacity:1}
+  .am-controls{pointer-events:auto;display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(28,30,34,0.72);backdrop-filter:blur(24px) saturate(180%);-webkit-backdrop-filter:blur(24px) saturate(180%);border:1px solid rgba(255,255,255,0.10);border-radius:22px;box-shadow:0 12px 40px rgba(0,0,0,0.45), 0 1px 0 rgba(255,255,255,0.06) inset}
+  .am-icon{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.08);color:var(--text);cursor:pointer;transition:background .15s, transform .12s, border-color .15s, box-shadow .15s;flex-shrink:0}
+  .am-icon:hover{background:rgba(255,255,255,0.14);transform:scale(1.04);border-color:rgba(255,255,255,0.14)}
+  .am-icon:active{transform:scale(0.96)}
+  .am-icon.primary{width:44px;height:44px;background:var(--accent);border-color:var(--accent);color:#00140e;box-shadow:0 4px 16px rgba(0,230,154,0.30)}
+  .am-icon.small{width:36px;height:36px}
+  .am-divider{width:1px;height:20px;background:rgba(255,255,255,0.08);margin:0 2px;flex-shrink:0}
+  .am-time{font-family:ui-monospace,Consolas,monospace;font-size:11px;font-weight:700;color:rgba(255,255,255,0.88);min-width:92px;text-align:right;font-variant-numeric:tabular-nums;letter-spacing:0.2px}
+  .am-top{position:absolute;top:14px;left:50%;transform:translateX(-50%);pointer-events:none;transition:opacity .25s, transform .25s;z-index:6}
+  .am-top.hidden{opacity:0;transform:translate(-50%,-6px);pointer-events:none}
+  .am-top-pill{pointer-events:auto;background:rgba(28,30,34,0.72);backdrop-filter:blur(24px) saturate(180%);-webkit-backdrop-filter:blur(24px) saturate(180%);border:1px solid rgba(255,255,255,0.10);border-radius:999px;padding:7px 14px;display:flex;gap:10px;align-items:center;font-size:12px;color:var(--text);box-shadow:0 12px 40px rgba(0,0,0,0.45), 0 1px 0 rgba(255,255,255,0.06) inset;max-width:min(560px,92vw)}
+  .am-top-pill b{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px}
+  .am-top-pill span{white-space:nowrap}
+  .am-fs{position:absolute;right:14px;bottom:14px;z-index:5;width:36px;height:36px;border-radius:50%;background:rgba(28,30,34,0.68);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,0.10);color:rgba(255,255,255,0.92);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(0,0,0,0.35);transition:background .15s, transform .12s}
+  .am-fs:hover{background:rgba(255,255,255,0.14);transform:scale(1.05)}
+  .am-fs:active{transform:scale(0.95)}
+  .canvas-wrap:fullscreen .am-fs,.canvas-wrap:-webkit-full-screen .am-fs,.canvas-wrap.fs-fallback .am-fs{opacity:0;pointer-events:none}
+  @media(max-width:560px){.am-scrub-pill{width:78vw}.am-controls{gap:6px;padding:6px 8px}.am-time{min-width:78px;font-size:10.5px}.am-top-pill{padding:6px 10px;font-size:11px}}
   .intent{margin:8px 14px;display:flex;gap:10px;align-items:center;background:var(--surface);border:1px solid var(--outline);border-radius:10px;padding:8px 12px}
   .intent label{color:var(--muted);font-weight:700;font-size:12px;min-width:44px}
   .intent input{flex:1;background:var(--surface);border:1px solid var(--outline);color:var(--text);border-radius:8px;padding:7px 10px;outline:none}
@@ -106,6 +115,13 @@ import htm from "htm"
 import * as PIXI from "pixi.js"
 import lottie from "lottie-web"
 const html = htm.bind(React.createElement)
+
+// --- Apple Music crisp SVG icons (inline, no dep, 1.5px hairline) ---
+const IconPlay = ()=> html`<svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M4.2 2.8 L11.2 7 L4.2 11.2 Z" fill="currentColor" stroke="currentColor" stroke-width="0.7" stroke-linejoin="round" stroke-linecap="round"/></svg>`
+const IconPause = ()=> html`<svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><rect x="3.2" y="2.6" width="2.6" height="8.8" rx="0.9" fill="currentColor"/><rect x="8.2" y="2.6" width="2.6" height="8.8" rx="0.9" fill="currentColor"/></svg>`
+const IconReset = ()=> html`<svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M13.2 8 A5.2 5.2 0 1 1 7.9 2.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M13.2 2.9 V6.1 H10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`
+const IconExit = ()=> html`<svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M2 5.4V2H5.4" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round"/><path d="M8.6 2H12V5.4" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 8.6V12H8.6" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.4 12H2V8.6" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round"/></svg>`
+const IconExpand = ()=> html`<svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M5.2 2H2V5.2" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round"/><path d="M8.8 2H12V5.2" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round"/><path d="M8.8 12H12V8.8" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 8.8V12H5.2" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round"/></svg>`
 
 const ROUTES = [
   ["Coastal Hop",25,"Quick sprint — one focused stretch"],
@@ -496,16 +512,16 @@ hills.forEach(([col,speed,tile,amp,freq])=>{
         onMouseMove=${resetHideTimer}
         onTouchStart=${resetHideTimer}
         onClick=${(e)=>{
-          // tap map to show controls when hidden (YouTube) — ignore clicks on buttons/bars
+          // tap map to show controls when hidden — ignore clicks on glass pills/icons
           if(!isFullscreen) return
           const t=e.target
-          if(t.closest && (t.closest(".yt-bar")||t.closest(".yt-ctrl")||t.closest(".yt-top-card")||t.closest(".fs-btn"))) return
+          if(t.closest && (t.closest(".am-controls")||t.closest(".am-scrub-pill")||t.closest(".am-top-pill")||t.closest(".am-fs"))) return
           if(!controlsVisible) setControlsVisible(true)
           resetHideTimer()
         }}
       ><canvas ref=${canvasRef} style=${{width:"100%",height:"100%"}}></canvas>
-        <button class="fs-btn" aria-label=${isFullscreen ? "Exit fullscreen" : "Enter fullscreen"} title=${isFullscreen ? "Exit fullscreen (Esc)" : "Fullscreen (F)"} onClick=${()=> isFullscreen ? exitMapFullscreen() : enterMapFullscreen()}>
-          ${isFullscreen ? "⤓" : "⛶"}
+        <button class="am-fs" aria-label=${isFullscreen ? "Exit fullscreen" : "Enter fullscreen"} title=${isFullscreen ? "Exit fullscreen (Esc)" : "Fullscreen (F)"} onClick=${()=> isFullscreen ? exitMapFullscreen() : enterMapFullscreen()}>
+          ${isFullscreen ? html`<${IconExit} />` : html`<${IconExpand} />`}
         </button>
         <${AnimatePresence}>
           $${showDone ? html`<${motion.div} key="done" initial=${{x:400, opacity:0}} animate=${{x:0, opacity:1}} exit=${{x:400, opacity:0}} transition=${{type:"spring", stiffness:320, damping:28}} style=${{position:"absolute", top:"16px", right:"16px", width:"340px", background:"rgba(15,20,25,0.96)", backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)", border:"1px solid rgba(30,42,51,0.9)", borderRadius:"12px", padding:"14px", zIndex:20, boxShadow:"0 20px 40px rgba(0,0,0,0.5)"}}>
@@ -519,20 +535,20 @@ hills.forEach(([col,speed,tile,amp,freq])=>{
           </motion.div>` : null}
         </${AnimatePresence}>
         ${isFullscreen ? html`<div style=${{position:"absolute",inset:"0",pointerEvents:"none"}}>
-          <div class=${`yt-top ${controlsVisible ? "" : "hidden"}`}>
-            <div class="yt-top-card"><span style=${{fontWeight:700}}>${intent||"No intent"}</span><span style=${{color:"var(--muted)",fontSize:"11px"}}>${routeName} · ${routeMin} min · ${(dist/42).toFixed(1)} km</span></div>
+          <div class=${`am-top ${controlsVisible ? "" : "hidden"}`}>
+            <div class="am-top-pill"><b>${intent||"No intent"}</b><span style=${{color:"var(--muted)",fontSize:"11px"}}>${routeName} · ${routeMin} min · ${(dist/42).toFixed(1)} km</span></div>
           </div>
-          <div class=${`yt-wrap ${controlsVisible ? "" : "hidden"}`} onMouseMove=${resetHideTimer}>
+          <div class=${`am-dock ${controlsVisible ? "" : "hidden"}`} onMouseMove=${resetHideTimer}>
             <div
               ref=${barRef}
-              class="yt-scrub"
+              class="am-scrub-pill"
               onClick=${(e)=>{ scrubFromEvent(e); resetHideTimer() }}
               onPointerDown=${(e)=>{
                 seekingRef.current=true; e.currentTarget.classList.add("dragging")
                 const onMove=(ev)=> scrubFromEvent(ev)
                 const onUp=()=>{
                   seekingRef.current=false
-                  document.querySelectorAll(".yt-scrub.dragging").forEach(el=>el.classList.remove("dragging"))
+                  document.querySelectorAll(".am-scrub-pill.dragging").forEach(el=>el.classList.remove("dragging"))
                   document.removeEventListener("pointermove", onMove)
                   document.removeEventListener("pointerup", onUp)
                   resetHideTimer()
@@ -550,17 +566,14 @@ hills.forEach(([col,speed,tile,amp,freq])=>{
               <div class="yt-thumb" style=${{left:`${progress*100}%`}}></div>
               <div class="yt-tip" style=${{left:`${progress*100}%`}}>${timeLabel} · ${Math.round(progress*100)}%</div>
             </div>
-            <div class="yt-bar">
-              <div class="yt-ctrl">
-                ${!isRunning ? html`<button class="btn primary" onClick=${handleHitRoad}>▶ Hit the road</button>` : html`<button class="btn primary" onClick=${handlePauseToggle}>${isPaused ? "▶ Resume" : "⏸ Pause"}</button>`}
-                <button class="btn" onClick=${handleReset}>↺ Reset</button>
-                <span class="yt-time">${timeLabel}</span>
-              </div>
-              <div style=${{flex:"1"}}></div>
-              <div class="yt-ctrl">
-                <span style=${{color:"rgba(255,255,255,0.85)",fontSize:"11px",fontWeight:600}}>${(dist/42).toFixed(1)} km · CRUISE</span>
-                <button class="btn" onClick=${exitMapFullscreen}>⛶ Exit</button>
-              </div>
+            <div class="am-controls">
+              ${!isRunning
+                ? html`<button class="am-icon primary" aria-label="Hit the road" title="Hit the road" onClick=${handleHitRoad}><${IconPlay} /></button>`
+                : html`<button class="am-icon primary" aria-label=${isPaused ? "Resume" : "Pause"} title=${isPaused ? "Resume" : "Pause"} onClick=${handlePauseToggle}>${isPaused ? html`<${IconPlay} />` : html`<${IconPause} />`}</button>`}
+              <button class="am-icon small" aria-label="Reset" title="Reset" onClick=${handleReset}><${IconReset} /></button>
+              <div class="am-divider"></div>
+              <span class="am-time">${timeLabel} · ${Math.round(progress*100)}%</span>
+              <button class="am-icon small" aria-label="Exit fullscreen" title="Exit (Esc)" onClick=${exitMapFullscreen}><${IconExit} /></button>
             </div>
           </div>
         </div>` : ""}
