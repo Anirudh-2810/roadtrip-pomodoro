@@ -156,6 +156,8 @@ function App(){
   const audioRef=useRef(null)
   const isRunningRef=useRef(false)
   const isPausedRef=useRef(false)
+  const idlePhaseRef=useRef(0)
+  const pausedOffRef=useRef(0)
   const progress = total? (total-remaining)/total : 0
   const params=useCurve(seed)
   const roadCenter=(d)=> params[0]*Math.sin(d*params[2]+params[4]) + params[1]*Math.sin(d*params[3]+params[5])
@@ -253,7 +255,13 @@ function App(){
   },[isRunning])
   // sync refs for draw loop (phase gate) — avoids stale closure on isRunning/isPaused
   useEffect(()=>{ isRunningRef.current=isRunning },[isRunning])
-  useEffect(()=>{ isPausedRef.current=isPaused },[isPaused])
+  useEffect(()=>{ 
+    isPausedRef.current=isPaused
+    if(isPaused){
+      const pat=28 // 14+14 match dash+gap at dpr1
+      pausedOffRef.current=(dist*0.18)%pat
+    }
+  },[isPaused, dist])
   // sync isFullscreen — canvasWrap is the fullscreen element (YouTube style), not documentElement
   useEffect(()=>{
     const getFS = ()=> document.fullscreenElement || document.webkitFullscreenElement || null
@@ -345,18 +353,16 @@ function App(){
     if(!canvas) return
     const ctx=canvas.getContext("2d")
     let raf
-    let phase=0
     const draw=()=>{
       const dpr=window.devicePixelRatio||1
       const w=canvas.clientWidth*dpr, h=canvas.clientHeight*dpr
       if(canvas.width!==w||canvas.height!==h){ canvas.width=w; canvas.height=h }
       const W=w,H=h, horizon=H*0.28, d=dist
-      if(isPausedRef.current){
-        // pause = freeze divider
-      } else if(isRunningRef.current){
-        phase=(phase+0.016*0.07*SCENERY_SPEED)%1
-      } else {
-        phase=(phase+0.016*0.02*SCENERY_SPEED)%1
+      // idle drift only — cruise tied to dist, pause frozen
+      let idlePhase = idlePhaseRef.current
+      if(!isPausedRef.current && !isRunningRef.current){
+        idlePhase=(idlePhase+0.016*0.02*SCENERY_SPEED)%1
+        idlePhaseRef.current=idlePhase
       }
       ctx.clearRect(0,0,W,H)
       const grad=ctx.createLinearGradient(0,0,0,horizon)
@@ -401,7 +407,17 @@ hills.forEach(([col,speed,tile,amp,freq])=>{
       ;[-1,1].forEach(s=>{ ctx.beginPath(); for(let i=0;i<n;i++){ const x=centers[i]+s*(halfs[i]-8*dpr); if(i==0) ctx.moveTo(x,ys[i]); else ctx.lineTo(x,ys[i]) } ctx.stroke() })
       ctx.strokeStyle="#00e69a"
       const segLens=[]; for(let i=0;i<n-1;i++){ const dx=centers[i+1]-centers[i], dy=ys[i+1]-ys[i]; segLens.push(Math.hypot(dx,dy)) }
-      const dash=14*dpr, gap=14*dpr, pat=dash+gap, off=phase*pat
+      const dash=14*dpr, gap=14*dpr, pat=dash+gap
+      let off
+      if(isPausedRef.current){
+        off=pausedOffRef.current
+      } else if(isRunningRef.current){
+        off=(d*0.18)%pat
+        pausedOffRef.current=off
+      } else {
+        off=idlePhase*pat
+        pausedOffRef.current=off
+      }
       let acc=0
       for(let i=0;i<n-1;i++){
         const seg=segLens[i], a=acc, b=acc+seg
