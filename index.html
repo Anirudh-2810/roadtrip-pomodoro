@@ -33,6 +33,36 @@
   .hud-card{position:absolute;background:rgba(15,20,25,0.88);backdrop-filter:blur(16px) saturate(1.2);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(30,42,51,0.9);border-radius:12px;padding:8px 12px;display:flex;gap:10px;align-items:center;pointer-events:auto;box-shadow:0 8px 24px rgba(0,0,0,0.45)}
   .hud-top{top:12px;left:50%;transform:translateX(-50%);min-width:520px;max-width:92%;justify-content:space-between}
   .hud-bottom{bottom:16px;left:50%;transform:translateX(-50%);min-width:640px;max-width:94%;justify-content:space-between;padding:10px 14px}
+  /* YouTube-style fullscreen: map fills viewport */
+  .canvas-wrap:fullscreen{margin:0;border-radius:0;border:none;box-shadow:none;width:100vw;height:100vh}
+  .canvas-wrap:-webkit-full-screen{margin:0;border-radius:0;border:none;box-shadow:none;width:100vw;height:100vh}
+  .canvas-wrap.fs-fallback{position:fixed;inset:0;z-index:9999;margin:0;border-radius:0;border:none;box-shadow:none;width:100vw;height:100vh}
+  .canvas-wrap:fullscreen canvas,.canvas-wrap:-webkit-full-screen canvas,.canvas-wrap.fs-fallback canvas{height:100%}
+  .is-fs-mode header,.is-fs-mode .intent,.is-fs-mode .route,.is-fs-mode .timer-row,.is-fs-mode .controls,.is-fs-mode .sound,.is-fs-mode .quick,.is-fs-mode .quote,.is-fs-mode .stats{display:none !important}
+  .fs-btn{position:absolute;right:12px;bottom:12px;z-index:5;width:40px;height:40px;border-radius:10px;background:rgba(15,20,25,0.88);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(30,42,51,0.9);color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 4px 16px rgba(0,0,0,0.4);transition:background 0.15s, transform 0.12s}
+  .fs-btn:hover{background:rgba(30,42,51,0.9)}
+  .fs-btn:active{transform:scale(0.95)}
+  .canvas-wrap:fullscreen .fs-btn,.canvas-wrap:-webkit-full-screen .fs-btn,.canvas-wrap.fs-fallback .fs-btn{opacity:0;pointer-events:none}
+  /* YouTube control bar */
+  .yt-wrap{position:absolute;left:0;right:0;bottom:0;pointer-events:none;display:flex;flex-direction:column;gap:0;padding:0;background:linear-gradient(transparent, rgba(0,0,0,0.62));transition:opacity 0.25s ease, transform 0.25s ease}
+  .yt-wrap.hidden{opacity:0;transform:translateY(8px);pointer-events:none}
+  .yt-bar{pointer-events:auto;display:flex;align-items:center;gap:10px;padding:10px 14px 14px;background:transparent}
+  .yt-scrub{flex:1;position:relative;height:18px;display:flex;align-items:center;cursor:pointer;pointer-events:auto}
+  .yt-track{position:absolute;left:0;right:0;height:4px;background:rgba(255,255,255,0.22);border-radius:999px;overflow:visible;transition:height 0.15s}
+  .yt-scrub:hover .yt-track,.yt-scrub.dragging .yt-track{height:6px}
+  .yt-fill{position:absolute;left:0;top:0;bottom:0;background:var(--accent);border-radius:999px;pointer-events:none}
+  .yt-thumb{position:absolute;top:50%;width:12px;height:12px;background:#fff;border:2px solid var(--accent);border-radius:50%;transform:translate(-50%,-50%) scale(0);box-shadow:0 2px 8px rgba(0,0,0,0.4);transition:transform 0.12s;pointer-events:none}
+  .yt-scrub:hover .yt-thumb,.yt-scrub.dragging .yt-thumb{transform:translate(-50%,-50%) scale(1)}
+  .yt-thumb.dragging{transform:translate(-50%,-50%) scale(1.2)}
+  .yt-tip{position:absolute;bottom:18px;transform:translateX(-50%);background:rgba(15,20,25,0.96);color:var(--text);font-size:11px;font-family:ui-monospace,Consolas,monospace;padding:3px 6px;border-radius:6px;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity 0.12s}
+  .yt-scrub:hover .yt-tip{opacity:1}
+  .yt-ctrl{pointer-events:auto;display:flex;gap:8px;align-items:center}
+  .yt-ctrl .btn{padding:8px 14px;font-size:12px;border-radius:10px}
+  .yt-ctrl .btn.primary{padding:8px 16px}
+  .yt-time{font-family:ui-monospace,Consolas,monospace;font-size:12px;font-weight:700;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,0.6);min-width:74px;text-align:right}
+  .yt-top{position:absolute;top:0;left:0;right:0;display:flex;justify-content:center;padding:12px;pointer-events:none;background:linear-gradient(rgba(0,0,0,0.45), transparent);transition:opacity 0.25s}
+  .yt-top.hidden{opacity:0;pointer-events:none}
+  .yt-top-card{background:rgba(15,20,25,0.88);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(30,42,51,0.9);border-radius:999px;padding:6px 14px;display:flex;gap:10px;align-items:center;font-size:12px;pointer-events:auto;box-shadow:0 8px 24px rgba(0,0,0,0.45)}
   .intent{margin:8px 14px;display:flex;gap:10px;align-items:center;background:var(--surface);border:1px solid var(--outline);border-radius:10px;padding:8px 12px}
   .intent label{color:var(--muted);font-weight:700;font-size:12px;min-width:44px}
   .intent input{flex:1;background:var(--surface);border:1px solid var(--outline);color:var(--text);border-radius:8px;padding:7px 10px;outline:none}
@@ -102,6 +132,7 @@ function App(){
   const [isRunning,setIsRunning]=useState(false)
   const [isPaused,setIsPaused]=useState(false)
   const [isFullscreen,setIsFullscreen]=useState(false)
+  const [controlsVisible,setControlsVisible]=useState(true)
   const [seed,setSeed]=useState(Math.random())
   const [dist,setDist]=useState(0)
   const [showDone,setShowDone]=useState(false)
@@ -110,6 +141,10 @@ function App(){
   const [humOn,setHumOn]=useState(true)
   const [vol,setVol]=useState(0.12)
   const canvasRef=useRef(null)
+  const canvasWrapRef=useRef(null)
+  const barRef=useRef(null)
+  const hideTimerRef=useRef(null)
+  const seekingRef=useRef(false)
   const audioRef=useRef(null)
   const progress = total? (total-remaining)/total : 0
   const params=useCurve(seed)
@@ -206,13 +241,108 @@ function App(){
       if(remaining===total) { t0Ref.current=performance.now(); pausedRef.current=0; setDist(0) }
     }
   },[isRunning])
-  // sync isFullscreen state with document fullscreen API
+  // sync isFullscreen — canvasWrap is the fullscreen element (YouTube style), not documentElement
   useEffect(()=>{
-    const handleChange = () => setIsFullscreen(!!document.fullscreenElement)
+    const getFS = ()=> document.fullscreenElement || document.webkitFullscreenElement || null
+    const handleChange = () => {
+      const el = getFS()
+      const wrap = canvasWrapRef.current
+      // if we used fallback class, keep state true; otherwise match actual fullscreen element
+      const isFS = wrap ? (el === wrap || wrap.classList.contains("fs-fallback")) : !!el
+      setIsFullscreen(isFS)
+      if(isFS) setControlsVisible(true)
+    }
     handleChange()
     document.addEventListener("fullscreenchange", handleChange)
-    return () => document.removeEventListener("fullscreenchange", handleChange)
+    document.addEventListener("webkitfullscreenchange", handleChange)
+    return () => {
+      document.removeEventListener("fullscreenchange", handleChange)
+      document.removeEventListener("webkitfullscreenchange", handleChange)
+    }
   }, [])
+
+  // helpers: enter/exit fullscreen on canvasWrap
+  const enterMapFullscreen = ()=>{
+    const wrap = canvasWrapRef.current
+    if(!wrap) return
+    const req = wrap.requestFullscreen || wrap.webkitRequestFullscreen
+    if(req){
+      req.call(wrap).catch(()=>{
+        // fallback to fixed-position fullscreen when API blocked (e.g. iOS, iframe)
+        wrap.classList.add("fs-fallback")
+        setIsFullscreen(true)
+        setControlsVisible(true)
+      })
+    } else {
+      wrap.classList.add("fs-fallback")
+      setIsFullscreen(true)
+      setControlsVisible(true)
+    }
+  }
+  const exitMapFullscreen = ()=>{
+    const wrap = canvasWrapRef.current
+    if(wrap && wrap.classList.contains("fs-fallback")){
+      wrap.classList.remove("fs-fallback")
+      setIsFullscreen(false)
+      return
+    }
+    const exit = document.exitFullscreen || document.webkitExitFullscreen
+    if(document.fullscreenElement || document.webkitFullscreenElement) exit?.call(document).catch(()=>{})
+    else setIsFullscreen(false)
+  }
+
+  // autohide YouTube controls after 3s idle (only when fullscreen + running + not paused)
+  const resetHideTimer = ()=>{
+    if(!isFullscreen) return
+    setControlsVisible(true)
+    if(hideTimerRef.current) clearTimeout(hideTimerRef.current)
+    if(isRunning && !isPaused && !seekingRef.current){
+      hideTimerRef.current = setTimeout(()=> setControlsVisible(false), 3000)
+    }
+  }
+  useEffect(()=>{
+    if(isFullscreen && isRunning && !isPaused){
+      resetHideTimer()
+    } else if(isFullscreen){
+      setControlsVisible(true)
+      if(hideTimerRef.current) clearTimeout(hideTimerRef.current)
+    }
+    return ()=>{ if(hideTimerRef.current) clearTimeout(hideTimerRef.current) }
+  },[isFullscreen, isRunning, isPaused])
+  useEffect(()=>{
+    const onKey = (e)=>{
+      if(e.key==="Escape" && isFullscreen) { exitMapFullscreen() }
+      if(e.key==="f" || e.key==="F") {
+        // F toggles map fullscreen when focus not in input
+        const tag = document.activeElement?.tagName
+        if(tag==="INPUT"||tag==="SELECT"||tag==="TEXTAREA") return
+        e.preventDefault()
+        if(isFullscreen) exitMapFullscreen(); else enterMapFullscreen()
+      }
+    }
+    document.addEventListener("keydown", onKey)
+    return ()=> document.removeEventListener("keydown", onKey)
+  },[isFullscreen])
+
+  // scrubber: click/drag to seek
+  const seekToPct = (pct)=>{
+    const clamped = Math.max(0, Math.min(1, pct))
+    const nextRem = Math.round((1 - clamped) * total)
+    setRemaining(nextRem)
+    const nextDist = clamped * total * SCENERY_SPEED * 0.35
+    setDist(nextDist)
+    // keep t0 in sync so RAF loop doesn't snap back
+    if(isRunning){
+      t0Ref.current = performance.now() - clamped * total * 1000 - pausedRef.current
+    }
+  }
+  const scrubFromEvent = (e)=>{
+    const bar = barRef.current
+    if(!bar) return
+    const rect = bar.getBoundingClientRect()
+    const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left
+    seekToPct(x / rect.width)
+  }
 
   // draw
   useEffect(()=>{
@@ -312,24 +442,16 @@ hills.forEach(([col,speed,tile,amp,freq])=>{
           ctx.fillStyle="#2b1a0e";
           ctx.beginPath(); ctx.moveTo(baseX, y0-trH-folH); ctx.lineTo(baseX-folW*0.6, y0-trH-folH*0.55); ctx.lineTo(baseX+folW*0.6, y0-trH-folH*0.55); ctx.closePath(); ctx.fill()
         } else if(kind==3){
-          // bush — rounded cluster
-          bw = int(12 * scale)
-          bh = int(8 * scale)
-          bush_fill = "#1e3320"
-          ctx.create_oval(base_x - bw, y0 - bh, base_x + bw, y0,
-                          fill=bush_fill, outline="#24402e")
-          ctx.create_oval(base_x - bw*0.6, y0 - bh*1.2, base_x + bw*0.5, y0 - bh*0.2,
-                          fill="#244a33", outline="")
+          // bush — rounded cluster (canvas, not tkinter)
+          const bw=12*scale*dpr, bh=8*scale*dpr
+          ctx.fillStyle="#1e3320"; ctx.strokeStyle="#24402e"; ctx.lineWidth=1*dpr
+          ctx.beginPath(); ctx.ellipse(baseX, y0-bh*0.6, bw, bh*0.6, 0, 0, Math.PI*2); ctx.fill(); ctx.stroke()
+          ctx.fillStyle="#244a33"; ctx.strokeStyle="transparent"
+          ctx.beginPath(); ctx.ellipse(baseX-bw*0.15, y0-bh*0.9, bw*0.55, bh*0.5, 0, 0, Math.PI*2); ctx.fill()
         } else if(kind>=4){
-          // pole/rock — use mountain color for fullscreen, original otherwise
-          if(isFullscreen){
-            ctx.strokeStyle="#2a2a2a"; ctx.lineWidth=2*scale*dpr; const ph=16*scale*dpr; ctx.beginPath(); ctx.moveTo(baseX,y0); ctx.lineTo(baseX,y0-ph); ctx.stroke()
-            ctx.fillStyle="#2a2a2a";
-            ctx.beginPath(); ctx.ellipse(baseX, y0-ph, 2*scale*dpr, 2*scale*dpr,0,0,Math.PI*2); ctx.fill()
-          } else {
-            ctx.strokeStyle="#3a3a3a"; ctx.lineWidth=2*scale*dpr; const ph=16*scale*dpr; ctx.beginPath(); ctx.moveTo(baseX,y0); ctx.lineTo(baseX,y0-ph); ctx.stroke()
-            ctx.fillStyle="#c9a86a"; ctx.beginPath(); ctx.ellipse(baseX, y0-ph, 2*scale*dpr, 2*scale*dpr,0,0,Math.PI*2); ctx.fill()
-          }
+          // pole/rock — decoupled from fullscreen (always #2a2a2a / #c9a86a)
+          ctx.strokeStyle="#3a3a3a"; ctx.lineWidth=2*scale*dpr; const ph=16*scale*dpr; ctx.beginPath(); ctx.moveTo(baseX,y0); ctx.lineTo(baseX,y0-ph); ctx.stroke()
+          ctx.fillStyle="#c9a86a"; ctx.beginPath(); ctx.ellipse(baseX, y0-ph, 2*scale*dpr, 2*scale*dpr,0,0,Math.PI*2); ctx.fill()
         }
       }
       // mini car
@@ -359,16 +481,32 @@ hills.forEach(([col,speed,tile,amp,freq])=>{
     else{ try{ const arr=JSON.parse(localStorage.getItem("rf_sessions")||"[]"); arr.push(data); localStorage.setItem("rf_sessions",JSON.stringify(arr.slice(-50))) }catch{} }
   }
   const fmt=(s)=> String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0")
+  const timeLabel = fmt(remaining)
+  const handleHitRoad = ()=>{ setIsRunning(true); setIsPaused(false); setSeed(Math.random()) }
+  const handlePauseToggle = ()=>{ if(!isRunning) return; setIsPaused(p=>!p) }
+  const handleReset = ()=>{ setIsRunning(false); setIsPaused(false); setRemaining(total); setDist(0); t0Ref.current=performance.now(); pausedRef.current=0; pausedAt.current=null }
   return html`
-    <div style=${{height:"100%",display:"flex",flexDirection:"column"}}>
+    <div class=${isFullscreen ? "is-fs-mode" : ""} style=${{height:"100%",display:"flex",flexDirection:"column"}}>
       <header>
-
         <h1>ROADTRIP FOCUS</h1><p>pick a route · set your intent · drive</p>
         <div class="phase">${isRunning? `On the road — ${routeName}`: "Ready to roll"}</div>
-        <button onClick=${()=>{ const el=document.documentElement; if(!document.fullscreenElement) el.requestFullscreen?.().catch(()=>{ el.style.position="fixed"; el.style.inset="0" }); else document.exitFullscreen?.() }} style=${{position:"absolute",top:"12px",right:"14px",padding:"6px 12px",borderRadius:"8px",background:"var(--surface)",border:"1px solid var(--outline)",color:"var(--text)",fontSize:"12px",fontWeight:"700",cursor:"pointer",display: isFullscreen ? "none" : "block"}}>Fullscreen</button>
       </header>
 
-      <div class="canvas-wrap"><canvas ref=${canvasRef} style=${{width:"100%",height:"100%"}}></canvas>
+      <div ref=${canvasWrapRef} class="canvas-wrap"
+        onMouseMove=${resetHideTimer}
+        onTouchStart=${resetHideTimer}
+        onClick=${(e)=>{
+          // tap map to show controls when hidden (YouTube) — ignore clicks on buttons/bars
+          if(!isFullscreen) return
+          const t=e.target
+          if(t.closest && (t.closest(".yt-bar")||t.closest(".yt-ctrl")||t.closest(".yt-top-card")||t.closest(".fs-btn"))) return
+          if(!controlsVisible) setControlsVisible(true)
+          resetHideTimer()
+        }}
+      ><canvas ref=${canvasRef} style=${{width:"100%",height:"100%"}}></canvas>
+        <button class="fs-btn" aria-label=${isFullscreen ? "Exit fullscreen" : "Enter fullscreen"} title=${isFullscreen ? "Exit fullscreen (Esc)" : "Fullscreen (F)"} onClick=${()=> isFullscreen ? exitMapFullscreen() : enterMapFullscreen()}>
+          ${isFullscreen ? "⤓" : "⛶"}
+        </button>
         <${AnimatePresence}>
           $${showDone ? html`<${motion.div} key="done" initial=${{x:400, opacity:0}} animate=${{x:0, opacity:1}} exit=${{x:400, opacity:0}} transition=${{type:"spring", stiffness:320, damping:28}} style=${{position:"absolute", top:"16px", right:"16px", width:"340px", background:"rgba(15,20,25,0.96)", backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)", border:"1px solid rgba(30,42,51,0.9)", borderRadius:"12px", padding:"14px", zIndex:20, boxShadow:"0 20px 40px rgba(0,0,0,0.5)"}}>
             <div style=${{color:"var(--accent)", fontWeight:800, fontSize:"13px"}}>Journey completed ✓</div>
@@ -380,12 +518,50 @@ hills.forEach(([col,speed,tile,amp,freq])=>{
             </div>
           </motion.div>` : null}
         </${AnimatePresence}>
-        ${isFullscreen ? html`<div class="hud">
-          <div class="hud-card hud-top"><span>${intent||"No intent"}</span><span style=${{color:"var(--muted)",fontSize:"11px"}}>${routeName} · ${routeMin} min</span></div>
-          <div class="hud-card hud-bottom" style=${{position:"absolute",bottom:"12px",left:"50%",transform:"translateX(-50%)",minWidth:"640px",maxWidth:"94%",display:"flex",gap:"8px",alignItems:"center",justifyContent:"space-between",padding:"8px 12px",background:"rgba(15,20,25,0.88)",backdropFilter:"blur(16px)",border:"1px solid rgba(30,42,51,0.9)",borderRadius:"12px"}}>
-            <span style=${{color:"var(--accent)",fontFamily:"Consolas",fontWeight:"800"}}>${String(Math.floor(remaining/60)).padStart(2,"0")}:${String(remaining%60).padStart(2,"0")}</span>
-            <div style=${{flex:1,height:"6px",background:"var(--surface2)",borderRadius:"999px",overflow:"hidden",border:"1px solid var(--outline)"}}><div style=${{width:`${progress*100}%`,height:"100%",background:"var(--accent)",borderRadius:"999px"}}></div></div>
-            <button onClick=${()=>document.exitFullscreen?.()} style=${{padding:"6px 10px",borderRadius:"8px",background:"var(--surface)",border:"1px solid var(--outline)",color:"var(--text)",fontSize:"12px",fontWeight:"700",cursor:"pointer"}}>Exit</button>
+        ${isFullscreen ? html`<div style=${{position:"absolute",inset:"0",pointerEvents:"none"}}>
+          <div class=${`yt-top ${controlsVisible ? "" : "hidden"}`}>
+            <div class="yt-top-card"><span style=${{fontWeight:700}}>${intent||"No intent"}</span><span style=${{color:"var(--muted)",fontSize:"11px"}}>${routeName} · ${routeMin} min · ${(dist/42).toFixed(1)} km</span></div>
+          </div>
+          <div class=${`yt-wrap ${controlsVisible ? "" : "hidden"}`} onMouseMove=${resetHideTimer}>
+            <div
+              ref=${barRef}
+              class="yt-scrub"
+              onClick=${(e)=>{ scrubFromEvent(e); resetHideTimer() }}
+              onPointerDown=${(e)=>{
+                seekingRef.current=true; e.currentTarget.classList.add("dragging")
+                const onMove=(ev)=> scrubFromEvent(ev)
+                const onUp=()=>{
+                  seekingRef.current=false
+                  document.querySelectorAll(".yt-scrub.dragging").forEach(el=>el.classList.remove("dragging"))
+                  document.removeEventListener("pointermove", onMove)
+                  document.removeEventListener("pointerup", onUp)
+                  resetHideTimer()
+                }
+                document.addEventListener("pointermove", onMove)
+                document.addEventListener("pointerup", onUp)
+                scrubFromEvent(e)
+              }}
+              onTouchStart=${(e)=>{ seekingRef.current=true; scrubFromEvent(e) }}
+              onTouchMove=${scrubFromEvent}
+              onTouchEnd=${()=>{ seekingRef.current=false; resetHideTimer() }}
+            >
+              <div class="yt-track"></div>
+              <div class="yt-fill" style=${{width:`${progress*100}%`}}></div>
+              <div class="yt-thumb" style=${{left:`${progress*100}%`}}></div>
+              <div class="yt-tip" style=${{left:`${progress*100}%`}}>${timeLabel} · ${Math.round(progress*100)}%</div>
+            </div>
+            <div class="yt-bar">
+              <div class="yt-ctrl">
+                ${!isRunning ? html`<button class="btn primary" onClick=${handleHitRoad}>▶ Hit the road</button>` : html`<button class="btn primary" onClick=${handlePauseToggle}>${isPaused ? "▶ Resume" : "⏸ Pause"}</button>`}
+                <button class="btn" onClick=${handleReset}>↺ Reset</button>
+                <span class="yt-time">${timeLabel}</span>
+              </div>
+              <div style=${{flex:"1"}}></div>
+              <div class="yt-ctrl">
+                <span style=${{color:"rgba(255,255,255,0.85)",fontSize:"11px",fontWeight:600}}>${(dist/42).toFixed(1)} km · CRUISE</span>
+                <button class="btn" onClick=${exitMapFullscreen}>⛶ Exit</button>
+              </div>
+            </div>
           </div>
         </div>` : ""}
       </div>
