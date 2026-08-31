@@ -44,16 +44,10 @@
   .yt-wrap,.yt-top,.yt-bar,.yt-ctrl,.yt-time{display:none !important} /* legacy YouTube classes hidden */
   .am-dock{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);display:flex;flex-direction:column;gap:10px;align-items:center;pointer-events:none;transition:opacity .25s ease, transform .25s ease;z-index:6}
   .am-dock.hidden{opacity:0;transform:translate(-50%,10px);pointer-events:none}
-  .am-scrub-pill{pointer-events:auto;width:min(520px,72vw);height:28px;padding:8px 14px;background:rgba(28,30,34,0.72);backdrop-filter:blur(24px) saturate(180%);-webkit-backdrop-filter:blur(24px) saturate(180%);border:1px solid rgba(255,255,255,0.10);border-radius:999px;box-shadow:0 12px 40px rgba(0,0,0,0.45), 0 1px 0 rgba(255,255,255,0.06) inset;display:flex;align-items:center;position:relative;cursor:pointer}
-  .am-scrub-pill .yt-track{position:absolute;left:14px;right:14px;height:3px;background:rgba(255,255,255,0.18);border-radius:999px;transition:height .14s}
-  .am-scrub-pill:hover .yt-track,.am-scrub-pill.dragging .yt-track{height:5px}
-  .am-scrub-pill .yt-fill{position:absolute;left:14px;top:50%;height:3px;transform:translateY(-50%);background:var(--accent);border-radius:999px;pointer-events:none;transition:height .14s}
-  .am-scrub-pill:hover .yt-fill,.am-scrub-pill.dragging .yt-fill{height:5px}
-  .am-scrub-pill .yt-thumb{position:absolute;top:50%;width:10px;height:10px;background:#fff;border:1.5px solid var(--accent);border-radius:50%;transform:translate(-50%,-50%) scale(0);box-shadow:0 2px 8px rgba(0,0,0,0.35);transition:transform .13s;pointer-events:none}
-  .am-scrub-pill:hover .yt-thumb,.am-scrub-pill.dragging .yt-thumb{transform:translate(-50%,-50%) scale(1)}
-  .am-scrub-pill.dragging .yt-thumb{transform:translate(-50%,-50%) scale(1.15)}
-  .am-scrub-pill .yt-tip{position:absolute;bottom:32px;transform:translateX(-50%);background:rgba(22,26,30,0.94);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);color:var(--text);font-size:10px;font-family:ui-monospace,Consolas,monospace;padding:4px 7px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .12s}
-  .am-scrub-pill:hover .yt-tip{opacity:1}
+  .am-scrub-pill{pointer-events:none;width:min(520px,72vw);height:26px;padding:0 14px;background:rgba(28,30,34,0.72);backdrop-filter:blur(24px) saturate(180%);-webkit-backdrop-filter:blur(24px) saturate(180%);border:1px solid rgba(255,255,255,0.10);border-radius:999px;box-shadow:0 12px 40px rgba(0,0,0,0.45), 0 1px 0 rgba(255,255,255,0.06) inset;display:flex;align-items:center;position:relative;cursor:default;overflow:hidden}
+  .am-scrub-pill .yt-track{position:relative;flex:1;height:3px;background:rgba(255,255,255,0.18);border-radius:999px;overflow:hidden}
+  .am-scrub-pill .yt-fill{position:absolute;left:0;top:0;bottom:0;background:var(--accent);border-radius:999px;pointer-events:none;transition:width .25s ease}
+  .am-scrub-pill .yt-thumb,.am-scrub-pill .yt-tip{display:none !important}
   .am-controls{pointer-events:auto;display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(28,30,34,0.72);backdrop-filter:blur(24px) saturate(180%);-webkit-backdrop-filter:blur(24px) saturate(180%);border:1px solid rgba(255,255,255,0.10);border-radius:22px;box-shadow:0 12px 40px rgba(0,0,0,0.45), 0 1px 0 rgba(255,255,255,0.06) inset}
   .am-icon{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.08);color:var(--text);cursor:pointer;transition:background .15s, transform .12s, border-color .15s, box-shadow .15s;flex-shrink:0}
   .am-icon:hover{background:rgba(255,255,255,0.14);transform:scale(1.04);border-color:rgba(255,255,255,0.14)}
@@ -158,9 +152,7 @@ function App(){
   const [vol,setVol]=useState(0.12)
   const canvasRef=useRef(null)
   const canvasWrapRef=useRef(null)
-  const barRef=useRef(null)
   const hideTimerRef=useRef(null)
-  const seekingRef=useRef(false)
   const audioRef=useRef(null)
   const progress = total? (total-remaining)/total : 0
   const params=useCurve(seed)
@@ -307,12 +299,12 @@ function App(){
     else setIsFullscreen(false)
   }
 
-  // autohide YouTube controls after 3s idle (only when fullscreen + running + not paused)
+  // autohide controls after 3s idle (only when fullscreen + running + not paused) — read-only bar
   const resetHideTimer = ()=>{
     if(!isFullscreen) return
     setControlsVisible(true)
     if(hideTimerRef.current) clearTimeout(hideTimerRef.current)
-    if(isRunning && !isPaused && !seekingRef.current){
+    if(isRunning && !isPaused){
       hideTimerRef.current = setTimeout(()=> setControlsVisible(false), 3000)
     }
   }
@@ -340,25 +332,7 @@ function App(){
     return ()=> document.removeEventListener("keydown", onKey)
   },[isFullscreen])
 
-  // scrubber: click/drag to seek
-  const seekToPct = (pct)=>{
-    const clamped = Math.max(0, Math.min(1, pct))
-    const nextRem = Math.round((1 - clamped) * total)
-    setRemaining(nextRem)
-    const nextDist = clamped * total * SCENERY_SPEED * 0.35
-    setDist(nextDist)
-    // keep t0 in sync so RAF loop doesn't snap back
-    if(isRunning){
-      t0Ref.current = performance.now() - clamped * total * 1000 - pausedRef.current
-    }
-  }
-  const scrubFromEvent = (e)=>{
-    const bar = barRef.current
-    if(!bar) return
-    const rect = bar.getBoundingClientRect()
-    const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left
-    seekToPct(x / rect.width)
-  }
+  // scrubber: read-only display (no seek)
 
   // draw
   useEffect(()=>{
@@ -539,32 +513,8 @@ hills.forEach(([col,speed,tile,amp,freq])=>{
             <div class="am-top-pill"><b>${intent||"No intent"}</b><span style=${{color:"var(--muted)",fontSize:"11px"}}>${routeName} · ${routeMin} min · ${(dist/42).toFixed(1)} km</span></div>
           </div>
           <div class=${`am-dock ${controlsVisible ? "" : "hidden"}`} onMouseMove=${resetHideTimer}>
-            <div
-              ref=${barRef}
-              class="am-scrub-pill"
-              onClick=${(e)=>{ scrubFromEvent(e); resetHideTimer() }}
-              onPointerDown=${(e)=>{
-                seekingRef.current=true; e.currentTarget.classList.add("dragging")
-                const onMove=(ev)=> scrubFromEvent(ev)
-                const onUp=()=>{
-                  seekingRef.current=false
-                  document.querySelectorAll(".am-scrub-pill.dragging").forEach(el=>el.classList.remove("dragging"))
-                  document.removeEventListener("pointermove", onMove)
-                  document.removeEventListener("pointerup", onUp)
-                  resetHideTimer()
-                }
-                document.addEventListener("pointermove", onMove)
-                document.addEventListener("pointerup", onUp)
-                scrubFromEvent(e)
-              }}
-              onTouchStart=${(e)=>{ seekingRef.current=true; scrubFromEvent(e) }}
-              onTouchMove=${scrubFromEvent}
-              onTouchEnd=${()=>{ seekingRef.current=false; resetHideTimer() }}
-            >
-              <div class="yt-track"></div>
-              <div class="yt-fill" style=${{width:`${progress*100}%`}}></div>
-              <div class="yt-thumb" style=${{left:`${progress*100}%`}}></div>
-              <div class="yt-tip" style=${{left:`${progress*100}%`}}>${timeLabel} · ${Math.round(progress*100)}%</div>
+            <div class="am-scrub-pill">
+              <div class="yt-track"><div class="yt-fill" style=${{width:`${progress*100}%`}}></div></div>
             </div>
             <div class="am-controls">
               ${!isRunning
