@@ -27,7 +27,7 @@
   header p{margin:3px 0 0;color:var(--muted);font-size:11px;letter-spacing:0.3px}
   .phase{margin-top:6px;color:#9ab0a0;font-size:12px;font-weight:600}
   /* traffic removed — mac look without dots, header centered like Apple Music */
-  .canvas-wrap{flex:1;position:relative;margin:8px 14px;background:#0a0a0a;border-radius:16px;overflow:hidden;border:1px solid var(--outline);box-shadow:0 20px 40px rgba(0,0,0,0.55)}
+  .canvas-wrap{flex:1;position:relative;margin:12px 20px;background:#0a0a0a;border-radius:18px;overflow:hidden;border:1px solid var(--outline);box-shadow:0 24px 48px rgba(0,0,0,0.55)}
   canvas{width:100%;height:100%;display:block}
   .hud{position:absolute;inset:0;pointer-events:none}
   .hud-card{position:absolute;background:rgba(15,20,25,0.88);backdrop-filter:blur(16px) saturate(1.2);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(30,42,51,0.9);border-radius:12px;padding:8px 12px;display:flex;gap:10px;align-items:center;pointer-events:auto;box-shadow:0 8px 24px rgba(0,0,0,0.45)}
@@ -66,30 +66,30 @@
   .am-fs:active{transform:scale(0.95)}
   .canvas-wrap:fullscreen .am-fs,.canvas-wrap:-webkit-full-screen .am-fs,.canvas-wrap.fs-fallback .am-fs{opacity:0;pointer-events:none}
   @media(max-width:560px){.am-scrub-pill{width:78vw}.am-controls{gap:6px;padding:6px 8px}.am-time{min-width:78px;font-size:10.5px}.am-top-pill{padding:6px 10px;font-size:11px}}
-  .intent{margin:8px 14px;display:flex;gap:10px;align-items:center;background:var(--surface);border:1px solid var(--outline);border-radius:10px;padding:8px 12px}
+  .intent{margin:10px 20px;display:flex;gap:10px;align-items:center;background:var(--surface);border:1px solid var(--outline);border-radius:12px;padding:10px 14px}
   .intent label{color:var(--muted);font-weight:700;font-size:12px;min-width:44px}
   .intent input{flex:1;background:var(--surface);border:1px solid var(--outline);color:var(--text);border-radius:8px;padding:7px 10px;outline:none}
   .intent input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,230,154,0.15)}
-  .route{margin:0 14px 8px;display:flex;gap:10px;align-items:center;background:var(--surface);border:1px solid var(--outline);border-radius:10px;padding:8px 12px}
+  .route{margin:0 20px 10px;display:flex;gap:10px;align-items:center;background:var(--surface);border:1px solid var(--outline);border-radius:12px;padding:10px 14px}
   .route select{background:var(--surface2);color:var(--text);border:1px solid var(--outline);border-radius:8px;padding:6px 10px}
-  .timer-row{display:flex;gap:12px;margin:8px 14px;align-items:stretch}
+  .timer-row{display:flex;gap:12px;margin:10px 20px;align-items:stretch}
   .time-card{flex:0 0 240px;background:var(--surface);border:1px solid var(--outline);border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px;box-shadow:0 4px 16px rgba(0,0,0,0.3)}
   .time{font-family:ui-monospace,Consolas,monospace;font-size:38px;font-weight:800;color:var(--accent);letter-spacing:1px}
   .cap{color:var(--muted);font-size:11px;margin-top:2px}
   .progress-card{flex:1;background:var(--surface);border:1px solid var(--outline);border-radius:12px;padding:14px;display:flex;flex-direction:column;justify-content:center;gap:8px}
   .bar{height:8px;background:var(--surface2);border-radius:999px;overflow:hidden;border:1px solid var(--outline);position:relative}
   .fill{height:100%;background:var(--accent);width:0%;border-radius:999px}
-  .controls{display:flex;gap:10px;justify-content:center;margin:10px 14px}
-  .btn{padding:10px 16px;border-radius:10px;border:1px solid var(--outline);background:var(--surface);color:var(--text);cursor:pointer;font-weight:700;font-size:13px;transition:transform 0.12s}
+  .controls{display:flex;gap:12px;justify-content:center;margin:14px 20px}
+  .btn{padding:11px 18px;border-radius:12px;border:1px solid var(--outline);background:var(--surface);color:var(--text);cursor:pointer;font-weight:700;font-size:13px;transition:transform 0.12s}
   .btn:active{transform:scale(0.97)}
   .btn.primary{background:var(--accent);color:#00140e;border-color:var(--accent);box-shadow:0 4px 12px rgba(0,230,154,0.25)}
   .btn:disabled{opacity:0.5;cursor:not-allowed}
-  .sound{display:flex;gap:10px;align-items:center;justify-content:center;margin:6px 14px;color:var(--muted);font-size:12px;background:var(--surface);border:1px solid var(--outline);border-radius:10px;padding:8px 12px}
+  .sound{display:flex;gap:10px;align-items:center;justify-content:center;margin:6px 20px;color:var(--muted);font-size:12px;background:var(--surface);border:1px solid var(--outline);border-radius:10px;padding:8px 12px}
   .sound select{background:var(--surface2);color:var(--text);border:1px solid var(--outline);border-radius:6px;padding:4px 8px}
-  .quick{display:flex;gap:8px;justify-content:center;margin:6px 14px}
+  .quick{display:flex;gap:8px;justify-content:center;margin:6px 20px 10px}
   .pill{padding:6px 14px;border-radius:999px;background:var(--surface);border:1px solid var(--outline);color:var(--text);cursor:pointer;font-size:12px;font-weight:600}
   .pill.active{background:var(--accent);color:#00140e;border-color:var(--accent);box-shadow:0 2px 8px rgba(0,230,154,0.2)}
-  .quote{text-align:center;color:var(--muted);font-style:italic;font-size:12px;margin:10px 14px;opacity:0.9}
+  .quote{text-align:center;color:var(--muted);font-style:italic;font-size:12px;margin:12px 20px 16px;opacity:0.9}
   .stats{display:flex;justify-content:space-between;align-items:center;margin:6px 14px 10px;color:var(--muted);font-size:11px}
   .stats button{padding:5px 10px;border-radius:8px;background:var(--surface);border:1px solid var(--outline);color:var(--accent);cursor:pointer}
   .top-actions{position:absolute;top:12px;right:14px;display:flex;gap:8px}
@@ -579,7 +579,6 @@ hills.forEach(([col,speed,tile,amp,freq])=>{
       </div>
       <div class="quick">${[25,50,90].map(m=> html`<button key=${m} class=${`pill ${routeMin===m?"active":""}`} onClick=${()=>{ setRouteMin(m); const r=ROUTES.find(x=>x[1]==m); if(r) setRouteName(r[0]); setTotal(m*60); setRemaining(m*60)}}>${m}m</button>`)}<button class="pill" onClick=${()=>{ const v=prompt("Custom 1-180"); const n=parseInt(v); if(n>=1&&n<=180){ setRouteName(`Custom · ${n}m`); setRouteMin(n); setTotal(n*60); setRemaining(n*60)} }}>Custom</button></div>
       <div class="quote">“${["Focus is a muscle","Small consistent sessions beat long distracted ones","Deep work now, freedom later"][Math.floor(Date.now()/8000)%3]}”</div>
-      <div class="stats"><span>Roadtrip Focus — dark minimal</span><span>via My apps</span></div>
     </div>
   `
 }
