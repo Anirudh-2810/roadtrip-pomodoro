@@ -38,8 +38,49 @@
   .canvas-wrap:-webkit-full-screen{margin:0;border-radius:0;border:none;box-shadow:none;width:100vw;height:100vh}
   .canvas-wrap.fs-fallback{position:fixed;inset:0;z-index:9999;margin:0;border-radius:0;border:none;box-shadow:none;width:100vw;height:100vh}
   .canvas-wrap:fullscreen canvas,.canvas-wrap:-webkit-full-screen canvas,.canvas-wrap.fs-fallback canvas{height:100%}
-  .is-fs-mode header,.is-fs-mode .intent,.is-fs-mode .route,.is-fs-mode .timer-row,.is-fs-mode .controls,.is-fs-mode .sound,.is-fs-mode .quick,.is-fs-mode .quote,.is-fs-mode .stats{display:none !important}
+  .is-fs-mode header,.is-fs-mode .intent,.is-fs-mode .route,.is-fs-mode .timer-row,.is-fs-mode .controls,.is-fs-mode .sound,.is-fs-mode .quick,.is-fs-mode .quote,.is-fs-mode .stats,.is-fs-mode .windowed-wrap{display:none !important}
   .fs-btn{display:none !important}
+  /* windowed sheet + history (dark, Globetrans split) */
+  .windowed-wrap{display:flex;gap:12px;margin:12px 20px;flex:1;min-height:0}
+  .sheet-wrap{flex:0 0 36%;min-width:300px;max-width:380px;background:var(--surface);border:1px solid var(--outline);border-radius:16px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.35)}
+  .sheet-head{padding:14px 14px 10px;border-bottom:1px solid var(--outline);display:flex;justify-content:space-between;align-items:center}
+  .sheet-head h2{margin:0;font-size:13px;font-weight:800;color:var(--accent);letter-spacing:0.8px}
+  .sheet-head span{color:var(--muted);font-size:11px;cursor:pointer}
+  .sheet-tabs{display:flex;gap:8px;padding:10px 14px;border-bottom:1px solid var(--outline)}
+  .sheet-tab{flex:1;padding:6px 10px;border-radius:999px;border:1px solid var(--outline);background:var(--surface2);color:var(--muted);font-size:12px;font-weight:700;cursor:pointer;text-align:center;transition:background .15s, color .15s}
+  .sheet-tab.active{background:var(--accent);color:#00140e;border-color:var(--accent);box-shadow:0 2px 8px rgba(0,230,154,0.2)}
+  .sheet-intent{padding:10px 14px;border-bottom:1px solid var(--outline)}
+  .sheet-intent label{color:var(--muted);font-weight:700;font-size:11px;display:block;margin-bottom:6px}
+  .sheet-intent input{width:100%;background:var(--surface2);border:1px solid var(--outline);color:var(--text);border-radius:8px;padding:7px 10px;outline:none;font-size:12px}
+  .sheet-intent input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,230,154,0.15)}
+  .sheet-list{flex:1;overflow:auto;padding:8px 8px 0;min-height:160px}
+  .sheet-row{padding:10px 10px;border:1px solid var(--outline);background:var(--surface2);border-radius:12px;margin-bottom:8px;cursor:pointer;transition:border-color .15s, background .15s}
+  .sheet-row:hover{border-color:rgba(0,230,154,0.35)}
+  .sheet-row.active{border-color:var(--accent);background:rgba(0,230,154,0.08)}
+  .sheet-row-top{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:700;color:var(--text)}
+  .sheet-row-sub{font-size:11px;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sheet-badge{padding:3px 8px;border-radius:999px;font-size:10px;font-weight:800;letter-spacing:0.4px;white-space:nowrap}
+  .sheet-badge.transit{background:var(--accent);color:#00140e}
+  .sheet-badge.delivered{background:var(--surface);color:var(--muted);border:1px solid var(--outline)}
+  .sheet-empty{padding:28px 14px;text-align:center;color:var(--muted);font-style:italic;font-size:12px}
+  .sheet-footer{padding:10px 14px;border-top:1px solid var(--outline);display:flex;flex-direction:column;gap:10px;background:var(--surface)}
+  .sheet-footer .timer-row{margin:0}
+  .sheet-footer .time-card{flex:0 0 140px}
+  .sheet-footer .time{font-size:28px}
+  .sheet-footer .controls{margin:0;justify-content:center}
+  .sheet-footer .sound{margin:0}
+  .sheet-footer .quick{margin:0}
+  .sheet-footer .quote{margin:6px 0 0}
+  .sheet-map-wrap{flex:1;position:relative;background:#0a0a0a;border-radius:16px;overflow:hidden;border:1px solid var(--outline);box-shadow:0 8px 24px rgba(0,0,0,0.35);min-height:420px;display:flex;flex-direction:column}
+  .sheet-map-wrap .canvas-wrap{margin:0;flex:1;border:none;box-shadow:none;border-radius:0;height:auto}
+  .sheet-detail{position:absolute;inset:8px;background:var(--surface);border:1px solid var(--outline);border-radius:12px;padding:12px;box-shadow:0 16px 32px rgba(0,0,0,0.45);z-index:5;display:flex;flex-direction:column;gap:8px}
+  .sheet-detail h3{margin:0;font-size:13px;font-weight:800;color:var(--text)}
+  .sheet-detail-bar{height:3px;background:var(--surface2);border-radius:999px;overflow:hidden}
+  .sheet-detail-fill{height:100%;background:var(--accent);border-radius:999px;transition:width .25s}
+  .sheet-detail-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;font-size:11px}
+  .sheet-detail-grid b{color:var(--text);display:block;font-size:11px}
+  .sheet-detail-grid span{color:var(--muted);font-size:11px}
+  @media(max-width:720px){.windowed-wrap{flex-direction:column}.sheet-wrap{max-width:none;flex:0 0 auto;max-height:42vh}.sheet-map-wrap{min-height:42vh}}
   /* Apple Music / iOS glass — floating capsules (replaces YouTube bar) */
   .yt-wrap,.yt-top,.yt-bar,.yt-ctrl,.yt-time{display:none !important} /* legacy YouTube classes hidden */
   .am-dock{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);display:flex;flex-direction:column;gap:10px;align-items:center;pointer-events:none;transition:opacity .25s ease, transform .25s ease;z-index:6}
@@ -169,6 +210,8 @@ function App(){
   const [noiseKind,setNoiseKind]=useState("brown")
   const [humOn,setHumOn]=useState(true)
   const [vol,setVol]=useState(0.12)
+  const [sheetTab,setSheetTab]=useState("onroad")
+  const [detailItem,setDetailItem]=useState(null)
   const canvasRef=useRef(null)
   const canvasWrapRef=useRef(null)
   const hideTimerRef=useRef(null)
@@ -377,6 +420,7 @@ function App(){
     }catch{ setLogRows([]); return [] }
   }
   useEffect(()=>{ if(showLog) loadLogs() },[showLog])
+  useEffect(()=>{ loadLogs() },[])
   const clearLogs = ()=>{
     if(!confirm("Clear all trip history?")) return
     localStorage.removeItem("rf_sessions")
@@ -571,12 +615,11 @@ hills.forEach(([col,speed,tile,amp,freq])=>{
         <div class="phase">${isRunning? `On the road — ${routeName}`: "Ready to roll"}</div>
       </header>
 
-      <div ref=${canvasWrapRef} class="canvas-wrap"
+      ${isFullscreen
+        ? html`<div ref=${canvasWrapRef} class="canvas-wrap"
         onMouseMove=${resetHideTimer}
         onTouchStart=${resetHideTimer}
         onClick=${(e)=>{
-          // tap map to show controls when hidden — ignore clicks on glass pills/icons
-          if(!isFullscreen) return
           const t=e.target
           if(t.closest && (t.closest(".am-controls")||t.closest(".am-scrub-pill")||t.closest(".am-top-pill")||t.closest(".am-fs"))) return
           if(!controlsVisible) setControlsVisible(true)
@@ -597,7 +640,7 @@ hills.forEach(([col,speed,tile,amp,freq])=>{
             </div>
           </motion.div>` : null}
         </${AnimatePresence}>
-        ${isFullscreen ? html`<div style=${{position:"absolute",inset:"0",pointerEvents:"none"}}>
+        <div style=${{position:"absolute",inset:"0",pointerEvents:"none"}}>
           <div class=${`am-top ${controlsVisible ? "" : "hidden"}`}>
             <div class="am-top-pill"><b>${intent||"No intent"}</b><span style=${{color:"var(--muted)",fontSize:"11px"}}>${routeName} · ${routeMin} min · ${(dist/42).toFixed(1)} km</span></div>
           </div>
@@ -615,32 +658,94 @@ hills.forEach(([col,speed,tile,amp,freq])=>{
               <span class="am-time">${timeLabel} · ${Math.round(progress*100)}%</span>
               <button class="am-icon small" aria-label="Exit fullscreen" title="Exit (Esc)" onClick=${exitMapFullscreen}><${IconExit} /></button>
           </div>
-        </div>` : ""}
-      </div>
-      <div class="intent"><label>Intent</label><input value=${intent} onInput=${e=>setIntent(e.target.value)} placeholder='e.g. "finish problem set 3.1"'/></div>
-      <div class="route"><label>Route</label>
-        <select value=${routeName} onChange=${e=>{ const v=e.target.value; const r=ROUTES.find(x=>x[0]==v); if(r){ setRouteName(r[0]); setRouteMin(r[1]); setTotal(r[1]*60); setRemaining(r[1]*60); setSeed(Math.random()) }}}>
-          ${ROUTES.map(r=> html`<option key=${r[0]} value=${r[0]}>${r[0]} · ${r[1]} min</option>`)}
-        </select><span style=${{color:"var(--muted)",fontSize:"11px"}}>${ROUTES.find(r=>r[0]==routeName)?.[2]}</span>
-      </div>
-      <div class="timer-row">
-        <div class="time-card"><div class="time">${fmt(remaining)}</div><div class="cap">mm:ss</div></div>
-        <div class="progress-card"><div class="bar"><${motion.div} class="fill" animate=${{width:`${progress*100}%`}} transition=${{type:"spring",stiffness:120,damping:18}} /></div><div style=${{fontSize:"11px",color:"var(--muted)",marginTop:"6px"}}>${(dist/42).toFixed(1)} km · CRUISE</div></div>
-      </div>
-      <div class="controls">
-        <${motion.button} whileTap=${{scale:0.97}} class="btn primary" disabled=${isRunning} onClick=${handleHitRoad}>Hit the road</motion.button>
-        <button class="btn" disabled=${!isRunning} onClick=${handlePauseToggle}>${isPaused?"Resume":"Pause"}</button>
-        <button class="btn" onClick=${handleReset}>Reset</button>
-      </div>
-      <div class="sound">
-        <label><input type="checkbox" checked=${humOn} onChange=${e=>setHumOn(e.target.checked)}/> Road hum</label>
-        <input type="range" min="0" max="0.5" step="0.02" value=${vol} onInput=${e=>setVol(parseFloat(e.target.value))}/>
-        <select value=${noiseKind} onChange=${e=>setNoiseKind(e.target.value)}>
-          <option value="brown">Brown</option><option value="pink">Pink</option><option value="white">White</option><option value="rain">Rain</option>
-        </select>
-      </div>
-      <div class="quick">${[25,50,90].map(m=> html`<button key=${m} class=${`pill ${routeMin===m?"active":""}`} onClick=${()=>{ setRouteMin(m); const r=ROUTES.find(x=>x[1]==m); if(r) setRouteName(r[0]); setTotal(m*60); setRemaining(m*60)}}>${m}m</button>`)}<button class="pill" onClick=${()=>{ const v=prompt("Custom 1-180"); const n=parseInt(v); if(n>=1&&n<=180){ setRouteName(`Custom · ${n}m`); setRouteMin(n); setTotal(n*60); setRemaining(n*60)} }}>Custom</button><button class=${`pill ${showLog?"active":""}`} onClick=${()=>{ loadLogs(); setShowLog(true) }}>Trip Log ${(()=>{try{ const n=JSON.parse(localStorage.getItem("rf_sessions")||"[]").length; return n?`(${n})`:""}catch{return ""}})()}</button></div>
-      <div class="quote">“${["Focus is a muscle","Small consistent sessions beat long distracted ones","Deep work now, freedom later"][Math.floor(Date.now()/8000)%3]}”</div>
+        </div>
+      </div>`
+        : html`<div class="windowed-wrap">
+        <div class="sheet-wrap">
+          <div class="sheet-head"><h2>Routes</h2><span style=${{color:"var(--muted)",fontSize:"11px",cursor:"pointer"}} onClick=${()=>{ loadLogs(); setShowLog(true) }}>Trip Log ${(()=>{try{ const n=JSON.parse(localStorage.getItem("rf_sessions")||"[]").length; return n?`(${n})`:""}catch{return ""}})()}</span></div>
+          <div class="sheet-tabs">
+            <button class=${`sheet-tab ${sheetTab==="onroad"?"active":""}`} onClick=${()=>setSheetTab("onroad")}>On the road ${(()=>{const c=ROUTES.length; return `(${c})`})()}</button>
+            <button class=${`sheet-tab ${sheetTab==="delivered"?"active":""}`} onClick=${()=>setSheetTab("delivered")}>Delivered ${(()=>{try{const a=JSON.parse(localStorage.getItem("rf_sessions")||"[]"); return `(${a.filter(r=>r.completed).length})`}catch{return "(0)"}})()}</button>
+          </div>
+          <div class="sheet-intent"><label>Intent</label><input value=${intent} onInput=${e=>setIntent(e.target.value)} placeholder='e.g. "finish problem set 3.1"'/></div>
+          <div class="sheet-list">
+            ${sheetTab==="onroad"
+              ? html`${ROUTES.map(r=> html`<div key=${r[0]} class=${`sheet-row ${routeName===r[0]?"active":""}`} onClick=${()=>{ setRouteName(r[0]); setRouteMin(r[1]); setTotal(r[1]*60); setRemaining(r[1]*60); setSeed(Math.random()); setDetailItem(null)}}>
+                  <div class="sheet-row-top"><span>${r[0]} → ${r[1]}m</span><span class=${`sheet-badge ${routeName===r[0]&&isRunning?"transit":"delivered"}`}>${routeName===r[0]&&isRunning?"IN TRANSIT":"READY"}</span></div>
+                  <div class="sheet-row-sub">Order #RO-${r[1]}${r[1]*100} · ${(r[1]*SCENERY_SPEED*0.35/42).toFixed(1)} km · ${r[2]}</div>
+                </div>`)}
+                ${logRows.filter(r=>!r.completed).slice(0,3).map(r=> html`<div key=${r.finished_at} class="sheet-row" onClick=${()=>setDetailItem(r)}>
+                  <div class="sheet-row-top"><span>${(r.intent||"No intent").slice(0,18)} → ${r.route||""}</span><span class="sheet-badge transit">IN TRANSIT</span></div>
+                  <div class="sheet-row-sub">Order #${(r.finished_at||"").slice(11,16).replace(":","")}${Math.floor(Math.random()*900+100)} · ${r.km||0} km · ${r.duration_min||0} min ago</div>
+                </div>`)}
+                ${ROUTES.length===0 ? html`<div class="sheet-empty">No routes</div>` : null}
+              `
+              : html`${(()=>{
+                  const rows=logRows.filter(r=>r.completed)
+                  if(!rows.length) return html`<div class="sheet-empty">No delivered trips — hit the road</div>`
+                  return html`${rows.slice(0,12).map(r=> html`<div key=${r.finished_at} class="sheet-row" onClick=${()=>setDetailItem(r)}>
+                    <div class="sheet-row-top"><span>${(r.intent||"No intent").slice(0,18)} → ${r.route||""}</span><span class="sheet-badge delivered">DELIVERED</span></div>
+                    <div class="sheet-row-sub">Order #${(r.finished_at||"").slice(0,10).replace(/-/g,"")}${String(r.duration_min||0).padStart(2,"0")} · ${r.km||0} km · ${(r.finished_at||"").slice(0,16).replace("T"," ")}</div>
+                  </div>`)}`
+                })()}`
+            }
+            ${detailItem ? html`<div class="sheet-detail" onClick=${e=>e.stopPropagation()}>
+              <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center"}}><h3>${detailItem.intent||"No intent"} → ${detailItem.route||""}</h3><span style=${{cursor:"pointer",color:"var(--muted)"}} onClick=${()=>setDetailItem(null)}>✕</span></div>
+              <div class="sheet-detail-bar"><div class="sheet-detail-fill" style=${{width:`${detailItem.completed?100:60}%`}}></div></div>
+              <div style=${{fontSize:"11px",color:"var(--muted)"}}>Order #${(detailItem.finished_at||"").slice(0,16).replace(/[-T:]/g,"")} · <span class=${`sheet-badge ${detailItem.completed?"delivered":"transit"}`} style=${{marginLeft:"6px"}}>${detailItem.completed?"DELIVERED":"IN TRANSIT"}</span></div>
+              <div class="sheet-detail-grid">
+                <div><span>Intent</span><b>${(detailItem.intent||"No intent").slice(0,24)}</b></div>
+                <div><span>Route</span><b>${detailItem.route||""} · ${detailItem.duration_min||0} min</b></div>
+                <div><span>Distance</span><b>${detailItem.km||0} km</b></div>
+                <div><span>Last Stop</span><b>${(()=>{const d=new Date(detailItem.finished_at); const h=Math.floor((Date.now()-d)/3600000); return h<1?"now":h+"h ago"})()}</b></div>
+              </div>
+              <div style=${{display:"flex",gap:"8px",marginTop:"6px"}}>
+                <button onClick=${()=>setDetailItem(null)} style=${{flex:1,padding:"6px",borderRadius:"8px",background:"var(--accent)",color:"#00140e",border:"none",fontWeight:700,cursor:"pointer"}}>Close</button>
+                <button onClick=${()=>{ setDetailItem(null); setRouteName(detailItem.route||ROUTES[0][0]); const m=ROUTES.find(x=>x[0]===detailItem.route); if(m){setRouteMin(m[1]); setTotal(m[1]*60); setRemaining(m[1]*60)} }} style=${{padding:"6px 10px",borderRadius:"8px",background:"var(--surface2)",border:"1px solid var(--outline)",color:"var(--text)",cursor:"pointer"}}>Use route</button>
+              </div>
+            </div>` : null}
+          </div>
+          <div class="sheet-footer">
+            <div class="timer-row">
+              <div class="time-card"><div class="time">${fmt(remaining)}</div><div class="cap">mm:ss</div></div>
+              <div class="progress-card"><div class="bar"><${motion.div} class="fill" animate=${{width:`${progress*100}%`}} transition=${{type:"spring",stiffness:120,damping:18}} /></div><div style=${{fontSize:"11px",color:"var(--muted)",marginTop:"6px"}}>${(dist/42).toFixed(1)} km · CRUISE</div></div>
+            </div>
+            <div class="controls">
+              <${motion.button} whileTap=${{scale:0.97}} class="btn primary" disabled=${isRunning} onClick=${handleHitRoad}>Hit the road</${motion.button}>
+              <button class="btn" disabled=${!isRunning} onClick=${handlePauseToggle}>${isPaused?"Resume":"Pause"}</button>
+              <button class="btn" onClick=${handleReset}>Reset</button>
+            </div>
+            <div class="sound">
+              <label><input type="checkbox" checked=${humOn} onChange=${e=>setHumOn(e.target.checked)}/> Road hum</label>
+              <input type="range" min="0" max="0.5" step="0.02" value=${vol} onInput=${e=>setVol(parseFloat(e.target.value))}/>
+              <select value=${noiseKind} onChange=${e=>setNoiseKind(e.target.value)}>
+                <option value="brown">Brown</option><option value="pink">Pink</option><option value="white">White</option><option value="rain">Rain</option>
+              </select>
+            </div>
+            <div class="quick">${[25,50,90].map(m=> html`<button key=${m} class=${`pill ${routeMin===m?"active":""}`} onClick=${()=>{ setRouteMin(m); const r=ROUTES.find(x=>x[1]==m); if(r) setRouteName(r[0]); setTotal(m*60); setRemaining(m*60)}}>${m}m</button>`)}<button class="pill" onClick=${()=>{ const v=prompt("Custom 1-180"); const n=parseInt(v); if(n>=1&&n<=180){ setRouteName(`Custom · ${n}m`); setRouteMin(n); setTotal(n*60); setRemaining(n*60)} }}>Custom</button></div>
+            <div class="quote">“${["Focus is a muscle","Small consistent sessions beat long distracted ones","Deep work now, freedom later"][Math.floor(Date.now()/8000)%3]}”</div>
+          </div>
+        </div>
+        <div class="sheet-map-wrap">
+          <div ref=${canvasWrapRef} class="canvas-wrap" style=${{margin:"0", flex:"1", height:"100%", border:"none", boxShadow:"none", borderRadius:"0"}}><canvas ref=${canvasRef} style=${{width:"100%",height:"100%"}}></canvas>
+            <button class="am-fs" aria-label=${isFullscreen ? "Exit fullscreen" : "Enter fullscreen"} title=${isFullscreen ? "Exit fullscreen (Esc)" : "Fullscreen (F)"} onClick=${()=> isFullscreen ? exitMapFullscreen() : enterMapFullscreen()}>
+              ${isFullscreen ? html`<${IconExit} />` : html`<${IconExpand} />`}
+            </button>
+            <${AnimatePresence}>
+              $${showDone ? html`<${motion.div} key="done" initial=${{x:400, opacity:0}} animate=${{x:0, opacity:1}} exit=${{x:400, opacity:0}} transition=${{type:"spring", stiffness:320, damping:28}} style=${{position:"absolute", top:"16px", right:"16px", width:"340px", background:"rgba(15,20,25,0.96)", backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)", border:"1px solid rgba(30,42,51,0.9)", borderRadius:"12px", padding:"14px", zIndex:20, boxShadow:"0 20px 40px rgba(0,0,0,0.5)"}}>
+                <div style=${{color:"var(--accent)", fontWeight:800, fontSize:"13px"}}>Journey completed ✓</div>
+                <div style=${{color:"var(--text)", fontSize:"12px", marginTop:"4px"}}>${doneInfo?.route} · ${doneInfo?.duration_min} min</div>
+                <div style=${{color:"var(--muted)", fontSize:"11px", fontStyle:"italic", marginTop:"2px", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis"}}>${doneInfo?.intent}</div>
+                <div style=${{display:"flex", gap:"8px", marginTop:"10px"}}>
+                  <button onClick=${()=>setShowDone(false)} style=${{flex:1, padding:"6px", borderRadius:"8px", background:"var(--accent)", color:"#00140e", border:"none", fontWeight:700, cursor:"pointer"}}>Dismiss</button>
+                  <button onClick=${()=>{ setShowDone(false); loadLogs(); setShowLog(true) }} style=${{padding:"6px 10px", borderRadius:"8px", background:"var(--surface)", border:"1px solid var(--outline)", color:"var(--muted)", cursor:"pointer"}}>Trip Log</button>
+                </div>
+              </motion.div>` : null}
+            </${AnimatePresence}>
+          </div>
+        </div>
+      </div>`
+      }
       ${showLog ? html`<div class="log-overlay" onClick=${()=>setShowLog(false)}>
         <${motion.div} class="log-card" initial=${{y:16, opacity:0}} animate=${{y:0, opacity:1}} exit=${{y:16, opacity:0}} onClick=${e=>e.stopPropagation()}>
           <div class="log-head">
