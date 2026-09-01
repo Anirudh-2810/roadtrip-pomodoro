@@ -316,6 +316,7 @@ function App(){
       pausedAt.current = performance.now()
     }
   },[isPaused, isRunning])
+  // desync intentional: 12% ease tail = end indication (88-100% coast to town, not lag)
   const easeOutCubic = t=> 1 - Math.pow(1 - t, 3)
   useEffect(()=>{
     let raf
