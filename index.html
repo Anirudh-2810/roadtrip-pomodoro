@@ -204,6 +204,10 @@ function App(){
   const [controlsVisible,setControlsVisible]=useState(true)
   const [seed,setSeed]=useState(Math.random())
   const [dist,setDist]=useState(0)
+  const distRef=useRef(0)
+  const distRenderRef=useRef(0)
+  const displayDistRef=useRef(0)
+  const lastUIDistRef=useRef(0)
   const [showDone,setShowDone]=useState(false)
   const [doneInfo,setDoneInfo]=useState(null)
   const [showLog,setShowLog]=useState(false)
@@ -319,7 +323,14 @@ function App(){
       if(isRunning && !isPaused){
         const base=progress*total*SCENERY_SPEED*0.35
         const eased = progress > 0.88 ? total*SCENERY_SPEED*0.35 * (0.88 + 0.12 * easeOutCubic((progress - 0.88) / 0.12)) : base
-        setDist(prev=> prev + (eased - prev)*0.14)
+        distRef.current=eased
+        distRenderRef.current += (distRef.current - distRenderRef.current)*0.14
+        const now=performance.now()
+        if(now - lastUIDistRef.current > 200){
+          lastUIDistRef.current=now
+          displayDistRef.current=distRenderRef.current
+          setDist(displayDistRef.current)
+        }
       }
       raf=requestAnimationFrame(tick)
     }
@@ -329,7 +340,7 @@ function App(){
   // keep t0 in sync on start
   useEffect(()=>{
     if(isRunning && !isPaused){
-      if(remaining===total) { t0Ref.current=performance.now(); pausedRef.current=0; setDist(0) }
+      if(remaining===total) { t0Ref.current=performance.now(); pausedRef.current=0; distRef.current=0; distRenderRef.current=0; displayDistRef.current=0; lastUIDistRef.current=performance.now(); setDist(0) }
     }
   },[isRunning])
   // sync refs for draw loop (phase gate) — avoids stale closure on isRunning/isPaused
@@ -338,9 +349,9 @@ function App(){
     isPausedRef.current=isPaused
     if(isPaused){
       const pat=28 // 14+14 match dash+gap at dpr1
-      pausedOffRef.current=(dist*0.18)%pat
+      pausedOffRef.current=(distRenderRef.current*0.18)%pat
     }
-  },[isPaused, dist])
+  },[isPaused])
   // sync isFullscreen — canvasWrap is the fullscreen element (YouTube style), not documentElement
   useEffect(()=>{
     const getFS = ()=> document.fullscreenElement || document.webkitFullscreenElement || null
@@ -468,7 +479,7 @@ function App(){
       const dpr=window.devicePixelRatio||1
       const w=canvas.clientWidth*dpr, h=canvas.clientHeight*dpr
       if(canvas.width!==w||canvas.height!==h){ canvas.width=w; canvas.height=h }
-      const W=w,H=h, horizon=H*0.28, d=dist
+      const W=w,H=h, horizon=H*0.28, d=distRenderRef.current
       // idle drift only — cruise tied to dist, pause frozen
       let idlePhase = idlePhaseRef.current
       if(!isPausedRef.current && !isRunningRef.current){
@@ -598,12 +609,12 @@ hills.forEach(([col,speed,tile,amp,freq])=>{
     }
     raf=requestAnimationFrame(draw)
     return ()=>cancelAnimationFrame(raf)
-  },[dist, progress, seed])
+  },[progress, seed])
 
   function onFinish(){
     const startedAt=startedAtRef.current||new Date().toISOString()
     const elapsedMin=Math.max(1, Math.round((total-remaining)/60) || Math.round(total/60))
-    const data={started_at:startedAt, finished_at:new Date().toISOString(), duration_min:elapsedMin, intent:intent||"(no intent)", route:routeName, completed:true, sound_on:humOn, km: Number((dist/42).toFixed(1))}
+    const data={started_at:startedAt, finished_at:new Date().toISOString(), duration_min:elapsedMin, intent:intent||"(no intent)", route:routeName, completed:true, sound_on:humOn, km: Number((distRenderRef.current/42).toFixed(1))}
     setDoneInfo(data); setShowDone(true); setTimeout(()=>setShowDone(false), 5000)
     startedAtRef.current=null
     if(window.pywebview && window.pywebview.api && window.pywebview.api.save_session){ try{ window.pywebview.api.save_session(data) }catch{} }
@@ -617,12 +628,12 @@ hills.forEach(([col,speed,tile,amp,freq])=>{
     // log abandoned if was running mid-trip
     if(isRunning && remaining>0 && remaining<total){
       const elapsedMin=Math.max(1, Math.round((total-remaining)/60))
-      const data={started_at:startedAtRef.current||new Date().toISOString(), finished_at:new Date().toISOString(), duration_min:elapsedMin, intent:intent||"(no intent)", route:routeName, completed:false, sound_on:humOn, km: Number((dist/42).toFixed(1))}
+      const data={started_at:startedAtRef.current||new Date().toISOString(), finished_at:new Date().toISOString(), duration_min:elapsedMin, intent:intent||"(no intent)", route:routeName, completed:false, sound_on:humOn, km: Number((distRenderRef.current/42).toFixed(1))}
       try{ const arr=JSON.parse(localStorage.getItem("rf_sessions")||"[]"); arr.push(data); localStorage.setItem("rf_sessions",JSON.stringify(arr.slice(-50))); if(showLog) loadLogs() }catch{}
       if(window.pywebview && window.pywebview.api && window.pywebview.api.save_session){ try{ window.pywebview.api.save_session({...data, completed:false}) }catch{} }
     }
     startedAtRef.current=null
-    setIsRunning(false); setIsPaused(false); setRemaining(total); setDist(0); t0Ref.current=performance.now(); pausedRef.current=0; pausedAt.current=null
+    setIsRunning(false); setIsPaused(false); setRemaining(total); distRef.current=0; distRenderRef.current=0; displayDistRef.current=0; setDist(0); t0Ref.current=performance.now(); pausedRef.current=0; pausedAt.current=null
   }
   return html`
     <div class=${isFullscreen ? "is-fs-mode" : ""} style=${{height:"100%",display:"flex",flexDirection:"column"}}>
