@@ -321,8 +321,10 @@ function App(){
     let raf
     const tick=()=>{
       if(isRunning && !isPaused){
-        const base=progress*total*SCENERY_SPEED*0.35
-        const eased = progress > 0.88 ? total*SCENERY_SPEED*0.35 * (0.88 + 0.12 * easeOutCubic((progress - 0.88) / 0.12)) : base
+        const elapsed=(performance.now() - t0Ref.current - pausedRef.current)/1000
+        const raw=Math.min(elapsed*SCENERY_SPEED*0.35, total*SCENERY_SPEED*0.35)
+        const p=Math.min(elapsed/total, 1)
+        const eased = p > 0.88 ? total*SCENERY_SPEED*0.35 * (0.88 + 0.12 * easeOutCubic((p - 0.88) / 0.12)) : raw
         distRef.current=eased
         distRenderRef.current += (distRef.current - distRenderRef.current)*0.14
         const now=performance.now()
@@ -336,7 +338,7 @@ function App(){
     }
     raf=requestAnimationFrame(tick)
     return ()=>cancelAnimationFrame(raf)
-  },[isRunning, isPaused, total, progress])
+  },[isRunning, isPaused, total])
   // keep t0 in sync on start
   useEffect(()=>{
     if(isRunning && !isPaused){
