@@ -213,6 +213,8 @@ function App(){
   const [vol,setVol]=useState(0.12)
   const [sheetTab,setSheetTab]=useState("onroad")
   const [detailItem,setDetailItem]=useState(null)
+  const prevKindRef=useRef(noiseKind)
+  const prevHumRef=useRef(humOn)
   const canvasRef=useRef(null)
   const canvasWrapRef=useRef(null)
   const hideTimerRef=useRef(null)
@@ -227,7 +229,7 @@ function App(){
   const roadCenter=(d)=> params[0]*Math.sin(d*params[2]+params[4]) + params[1]*Math.sin(d*params[3]+params[5])
   const persp=(t)=> 1 - Math.pow(1-t,1.65)
 
-  // audio
+  // audio — seamless live swap while running (A)
   useEffect(()=>{
     let ctx, src, gain
     const init = ()=>{
@@ -238,13 +240,11 @@ function App(){
         const buf=ctx.createBuffer(2, bufferSize, ctx.sampleRate)
         for(let ch=0; ch<2; ch++){
           const data=buf.getChannelData(ch)
-          // generate brown/pink/white/rain
           let b0,b1,b2,b3,b4,b5,b6
           b0=b1=b2=b3=b4=b5=b6=0
           let brown=0
           for(let i=0;i<bufferSize;i++){
             const white=Math.random()*2-1
-            // pink
             b0=0.99886*b0+white*0.0555179
             b1=0.99332*b1+white*0.0750759
             b2=0.96900*b2+white*0.153852
@@ -253,12 +253,10 @@ function App(){
             b5=-0.7616*b5-white*0.016898
             const pink=(b0+b1+b2+b3+b4+b5+b6+white*0.5362)*0.11
             b6=white*0.115926
-            // brown
             brown = brown + white*0.02
             brown *= 0.998
             const kind=noiseKind
             let v = kind==="white"? white : kind==="pink"? pink : kind==="brown"? brown*3.5 : pink*0.8 + (Math.random()<0.002? (Math.random()*0.5):0)
-            // hum
             const t=i/ctx.sampleRate
             const drone = humOn? (0.35*Math.sin(2*Math.PI*55*t)+0.18*Math.sin(2*Math.PI*110*t))*0.6 : 0
             data[i]= (v*0.45 + drone*0.5) * vol * 0.9
@@ -275,8 +273,25 @@ function App(){
       if(audioRef.current && audioRef.current.ctx.state==="suspended") audioRef.current.ctx.resume()
       try{ audioRef.current.src.start(0) }catch{}
     }
-    const stop = ()=>{ try{ audioRef.current.src.stop(); audioRef.current.ctx.close(); audioRef.current=null }catch{} }
-    if(isRunning && !isPaused){ start() } else { stop() }
+    const stop = ()=>{ try{ const a=audioRef.current; if(a){ a.src.stop(); try{a.ctx.close()}catch{} } audioRef.current=null }catch{} }
+    const kindChanged = noiseKind!==prevKindRef.current
+    const humChanged = humOn!==prevHumRef.current
+    const needsRebuild = isRunning && !isPaused && audioRef.current && (kindChanged || humChanged)
+    if(needsRebuild){
+      stop()
+      prevKindRef.current=noiseKind
+      prevHumRef.current=humOn
+    }
+    // vol live without rebuild
+    if(isRunning && !isPaused && audioRef.current && audioRef.current.gain){
+      try{ audioRef.current.gain.gain.setValueAtTime(vol, audioRef.current.ctx.currentTime) }catch{}
+      if(!kindChanged && !humChanged) return ()=>{}
+    }
+    if(isRunning && !isPaused && !audioRef.current){
+      prevKindRef.current=noiseKind
+      prevHumRef.current=humOn
+    }
+    if(isRunning && !isPaused){ start() } else { stop(); prevKindRef.current=noiseKind; prevHumRef.current=humOn }
     return ()=>{}
   },[isRunning,isPaused,noiseKind,humOn,vol])
 
@@ -286,7 +301,7 @@ function App(){
     const id=setInterval(()=> setRemaining(r=>{ if(r<=1){ setIsRunning(false); onFinish(); return 0 } return r-1 }),1000)
     return ()=>clearInterval(id)
   },[isRunning,isPaused])
-  // time-driven dist for proper 60fps (not 1fps progress stair-step)
+  // time-driven dist — A2: tie to progress while running for exact finish (no elapsed drift)
   const t0Ref = React.useRef(performance.now())
   const pausedRef = React.useRef(0)
   const pausedAt = React.useRef(null)
@@ -301,19 +316,19 @@ function App(){
     let raf
     const tick=()=>{
       if(isRunning && !isPaused){
-        const elapsed=(performance.now() - t0Ref.current - pausedRef.current)/1000
-        const target=Math.min(elapsed*SCENERY_SPEED*0.35, total*SCENERY_SPEED*0.35)
-        setDist(prev=> prev + (target - prev)*0.14)
+        const target=progress*total*SCENERY_SPEED*0.35
+        // snap at 1 to avoid spring lag at finish
+        if(progress>=0.999) setDist(target)
+        else setDist(prev=> prev + (target - prev)*0.14)
       }
       raf=requestAnimationFrame(tick)
     }
     raf=requestAnimationFrame(tick)
     return ()=>cancelAnimationFrame(raf)
-  },[isRunning, isPaused, total])
+  },[isRunning, isPaused, total, progress])
   // keep t0 in sync on start
   useEffect(()=>{
     if(isRunning && !isPaused){
-      // if just started, reset t0
       if(remaining===total) { t0Ref.current=performance.now(); pausedRef.current=0; setDist(0) }
     }
   },[isRunning])
@@ -586,6 +601,7 @@ hills.forEach(([col,speed,tile,amp,freq])=>{
   },[dist, progress, seed])
 
   function onFinish(){
+    setDist(total*SCENERY_SPEED*0.35)
     const startedAt=startedAtRef.current||new Date().toISOString()
     const elapsedMin=Math.max(1, Math.round((total-remaining)/60) || Math.round(total/60))
     const data={started_at:startedAt, finished_at:new Date().toISOString(), duration_min:elapsedMin, intent:intent||"(no intent)", route:routeName, completed:true, sound_on:humOn, km: Number((dist/42).toFixed(1))}
