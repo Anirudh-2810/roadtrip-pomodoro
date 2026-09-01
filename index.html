@@ -116,7 +116,6 @@
 </head>
 <body>
 <div id="root"></div>
-<div id="lottie" style="position:fixed;left:50%;top:42%;width:140px;height:140px;transform:translate(-50%,-50%);pointer-events:none;z-index:10;display:none"></div>
 <script type="module">
 import React, {useEffect, useRef, useState, useMemo} from "react"
 import {createRoot} from "react-dom/client"
@@ -541,8 +540,6 @@ hills.forEach(([col,speed,tile,amp,freq])=>{
   },[dist, progress, seed])
 
   function onFinish(){
-    const el=document.getElementById("lottie")
-    if(el){ try{ lottie.loadAnimation({container:el, renderer:"svg", loop:false, autoplay:true, path:"https://assets2.lottiefiles.com/packages/lf20_jcikwtux.json"}) ; el.style.display="block"; setTimeout(()=>el.style.display="none",2200)}catch{} }
     const startedAt=startedAtRef.current||new Date().toISOString()
     const elapsedMin=Math.max(1, Math.round((total-remaining)/60) || Math.round(total/60))
     const data={started_at:startedAt, finished_at:new Date().toISOString(), duration_min:elapsedMin, intent:intent||"(no intent)", route:routeName, completed:true, sound_on:humOn, km: Number((dist/42).toFixed(1))}
