@@ -48,14 +48,15 @@
   .am-scrub-pill .yt-track{position:relative;flex:1;height:3px;background:rgba(255,255,255,0.18);border-radius:999px;overflow:hidden}
   .am-scrub-pill .yt-fill{position:absolute;left:0;top:0;bottom:0;background:var(--accent);border-radius:999px;pointer-events:none;transition:width .25s ease}
   .am-scrub-pill .yt-thumb,.am-scrub-pill .yt-tip{display:none !important}
-  .am-controls{pointer-events:auto;display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(28,30,34,0.72);backdrop-filter:blur(24px) saturate(180%);-webkit-backdrop-filter:blur(24px) saturate(180%);border:1px solid rgba(255,255,255,0.10);border-radius:22px;box-shadow:0 12px 40px rgba(0,0,0,0.45), 0 1px 0 rgba(255,255,255,0.06) inset}
+  .am-controls{position:absolute;right:16px;top:50%;transform:translateY(-50%);pointer-events:auto;display:flex;flex-direction:column;align-items:center;gap:10px;padding:10px 8px;background:rgba(28,30,34,0.72);backdrop-filter:blur(24px) saturate(180%);-webkit-backdrop-filter:blur(24px) saturate(180%);border:1px solid rgba(255,255,255,0.10);border-radius:22px;box-shadow:0 12px 40px rgba(0,0,0,0.45), 0 1px 0 rgba(255,255,255,0.06) inset;z-index:6;transition:opacity .25s ease, transform .25s ease}
+  .am-controls.hidden{opacity:0;transform:translate(12px,-50%);pointer-events:none}
   .am-icon{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.08);color:var(--text);cursor:pointer;transition:background .15s, transform .12s, border-color .15s, box-shadow .15s;flex-shrink:0}
   .am-icon:hover{background:rgba(255,255,255,0.14);transform:scale(1.04);border-color:rgba(255,255,255,0.14)}
   .am-icon:active{transform:scale(0.96)}
   .am-icon.primary{width:44px;height:44px;background:var(--accent);border-color:var(--accent);color:#00140e;box-shadow:0 4px 16px rgba(0,230,154,0.30)}
   .am-icon.small{width:36px;height:36px}
-  .am-divider{width:1px;height:20px;background:rgba(255,255,255,0.08);margin:0 2px;flex-shrink:0}
-  .am-time{font-family:ui-monospace,Consolas,monospace;font-size:11px;font-weight:700;color:rgba(255,255,255,0.88);min-width:92px;text-align:right;font-variant-numeric:tabular-nums;letter-spacing:0.2px}
+  .am-divider{width:20px;height:1px;background:rgba(255,255,255,0.08);margin:2px 0;flex-shrink:0}
+  .am-time{font-family:ui-monospace,Consolas,monospace;font-size:11px;font-weight:700;color:rgba(255,255,255,0.88);min-width:auto;text-align:center;font-variant-numeric:tabular-nums;letter-spacing:0.2px;white-space:nowrap}
   .am-top{position:absolute;top:14px;left:50%;transform:translateX(-50%);pointer-events:none;transition:opacity .25s, transform .25s;z-index:6}
   .am-top.hidden{opacity:0;transform:translate(-50%,-6px);pointer-events:none}
   .am-top-pill{pointer-events:auto;background:rgba(28,30,34,0.72);backdrop-filter:blur(24px) saturate(180%);-webkit-backdrop-filter:blur(24px) saturate(180%);border:1px solid rgba(255,255,255,0.10);border-radius:999px;padding:7px 14px;display:flex;gap:10px;align-items:center;font-size:12px;color:var(--text);box-shadow:0 12px 40px rgba(0,0,0,0.45), 0 1px 0 rgba(255,255,255,0.06) inset;max-width:min(560px,92vw)}
@@ -604,7 +605,8 @@ hills.forEach(([col,speed,tile,amp,freq])=>{
             <div class="am-scrub-pill">
               <div class="yt-track"><div class="yt-fill" style=${{width:`${progress*100}%`}}></div></div>
             </div>
-            <div class="am-controls">
+          </div>
+          <div class=${`am-controls ${controlsVisible ? "" : "hidden"}`} onMouseMove=${resetHideTimer}>
               ${!isRunning
                 ? html`<button class="am-icon primary" aria-label="Hit the road" title="Hit the road" onClick=${handleHitRoad}><${IconPlay} /></button>`
                 : html`<button class="am-icon primary" aria-label=${isPaused ? "Resume" : "Pause"} title=${isPaused ? "Resume" : "Pause"} onClick=${handlePauseToggle}>${isPaused ? html`<${IconPlay} />` : html`<${IconPause} />`}</button>`}
@@ -612,7 +614,6 @@ hills.forEach(([col,speed,tile,amp,freq])=>{
               <div class="am-divider"></div>
               <span class="am-time">${timeLabel} · ${Math.round(progress*100)}%</span>
               <button class="am-icon small" aria-label="Exit fullscreen" title="Exit (Esc)" onClick=${exitMapFullscreen}><${IconExit} /></button>
-            </div>
           </div>
         </div>` : ""}
       </div>
