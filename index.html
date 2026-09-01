@@ -312,14 +312,14 @@ function App(){
       pausedAt.current = performance.now()
     }
   },[isPaused, isRunning])
+  const easeOutCubic = t=> 1 - Math.pow(1 - t, 3)
   useEffect(()=>{
     let raf
     const tick=()=>{
       if(isRunning && !isPaused){
-        const target=progress*total*SCENERY_SPEED*0.35
-        // snap at 1 to avoid spring lag at finish
-        if(progress>=0.999) setDist(target)
-        else setDist(prev=> prev + (target - prev)*0.14)
+        const base=progress*total*SCENERY_SPEED*0.35
+        const eased = progress > 0.88 ? total*SCENERY_SPEED*0.35 * (0.88 + 0.12 * easeOutCubic((progress - 0.88) / 0.12)) : base
+        setDist(prev=> prev + (eased - prev)*0.14)
       }
       raf=requestAnimationFrame(tick)
     }
@@ -601,7 +601,6 @@ hills.forEach(([col,speed,tile,amp,freq])=>{
   },[dist, progress, seed])
 
   function onFinish(){
-    setDist(total*SCENERY_SPEED*0.35)
     const startedAt=startedAtRef.current||new Date().toISOString()
     const elapsedMin=Math.max(1, Math.round((total-remaining)/60) || Math.round(total/60))
     const data={started_at:startedAt, finished_at:new Date().toISOString(), duration_min:elapsedMin, intent:intent||"(no intent)", route:routeName, completed:true, sound_on:humOn, km: Number((dist/42).toFixed(1))}
