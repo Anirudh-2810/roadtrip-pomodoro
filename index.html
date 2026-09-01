@@ -42,6 +42,7 @@
   .fs-btn{display:none !important}
   /* windowed sheet + history (dark, Globetrans split) */
   .windowed-wrap{display:flex;gap:12px;margin:12px 20px;flex:1;min-height:0}
+  .content-area{display:flex;gap:12px;flex:1;min-height:0}
   .sheet-wrap{flex:0 0 36%;min-width:300px;max-width:380px;background:var(--surface);border:1px solid var(--outline);border-radius:16px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.35)}
   .sheet-head{padding:14px 14px 10px;border-bottom:1px solid var(--outline);display:flex;justify-content:space-between;align-items:center}
   .sheet-head h2{margin:0;font-size:13px;font-weight:800;color:var(--accent);letter-spacing:0.8px}
@@ -80,7 +81,7 @@
   .sheet-detail-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;font-size:11px}
   .sheet-detail-grid b{color:var(--text);display:block;font-size:11px}
   .sheet-detail-grid span{color:var(--muted);font-size:11px}
-  @media(max-width:720px){.windowed-wrap{flex-direction:column}.sheet-wrap{max-width:none;flex:0 0 auto;max-height:42vh}.sheet-map-wrap{min-height:42vh}}
+  @media(max-width:720px){.windowed-wrap{flex-direction:column}.content-area{flex-direction:column;margin:0 12px}.sheet-wrap{max-width:none;flex:0 0 auto;max-height:42vh}.sheet-map-wrap{min-height:42vh}}
   /* Apple Music / iOS glass — floating capsules (replaces YouTube bar) */
   .yt-wrap,.yt-top,.yt-bar,.yt-ctrl,.yt-time{display:none !important} /* legacy YouTube classes hidden */
   .am-dock{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);display:flex;flex-direction:column;gap:10px;align-items:center;pointer-events:none;transition:opacity .25s ease, transform .25s ease;z-index:6}
@@ -615,53 +616,8 @@ hills.forEach(([col,speed,tile,amp,freq])=>{
         <div class="phase">${isRunning? `On the road — ${routeName}`: "Ready to roll"}</div>
       </header>
 
-      ${isFullscreen
-        ? html`<div ref=${canvasWrapRef} class="canvas-wrap"
-        onMouseMove=${resetHideTimer}
-        onTouchStart=${resetHideTimer}
-        onClick=${(e)=>{
-          const t=e.target
-          if(t.closest && (t.closest(".am-controls")||t.closest(".am-scrub-pill")||t.closest(".am-top-pill")||t.closest(".am-fs"))) return
-          if(!controlsVisible) setControlsVisible(true)
-          resetHideTimer()
-        }}
-      ><canvas ref=${canvasRef} style=${{width:"100%",height:"100%"}}></canvas>
-        <button class="am-fs" aria-label=${isFullscreen ? "Exit fullscreen" : "Enter fullscreen"} title=${isFullscreen ? "Exit fullscreen (Esc)" : "Fullscreen (F)"} onClick=${()=> isFullscreen ? exitMapFullscreen() : enterMapFullscreen()}>
-          ${isFullscreen ? html`<${IconExit} />` : html`<${IconExpand} />`}
-        </button>
-        <${AnimatePresence}>
-          $${showDone ? html`<${motion.div} key="done" initial=${{x:400, opacity:0}} animate=${{x:0, opacity:1}} exit=${{x:400, opacity:0}} transition=${{type:"spring", stiffness:320, damping:28}} style=${{position:"absolute", top:"16px", right:"16px", width:"340px", background:"rgba(15,20,25,0.96)", backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)", border:"1px solid rgba(30,42,51,0.9)", borderRadius:"12px", padding:"14px", zIndex:20, boxShadow:"0 20px 40px rgba(0,0,0,0.5)"}}>
-            <div style=${{color:"var(--accent)", fontWeight:800, fontSize:"13px"}}>Journey completed ✓</div>
-            <div style=${{color:"var(--text)", fontSize:"12px", marginTop:"4px"}}>${doneInfo?.route} · ${doneInfo?.duration_min} min</div>
-            <div style=${{color:"var(--muted)", fontSize:"11px", fontStyle:"italic", marginTop:"2px", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis"}}>${doneInfo?.intent}</div>
-            <div style=${{display:"flex", gap:"8px", marginTop:"10px"}}>
-              <button onClick=${()=>setShowDone(false)} style=${{flex:1, padding:"6px", borderRadius:"8px", background:"var(--accent)", color:"#00140e", border:"none", fontWeight:700, cursor:"pointer"}}>Dismiss</button>
-              <button onClick=${()=>{ setShowDone(false); loadLogs(); setShowLog(true) }} style=${{padding:"6px 10px", borderRadius:"8px", background:"var(--surface)", border:"1px solid var(--outline)", color:"var(--muted)", cursor:"pointer"}}>Trip Log</button>
-            </div>
-          </motion.div>` : null}
-        </${AnimatePresence}>
-        <div style=${{position:"absolute",inset:"0",pointerEvents:"none"}}>
-          <div class=${`am-top ${controlsVisible ? "" : "hidden"}`}>
-            <div class="am-top-pill"><b>${intent||"No intent"}</b><span style=${{color:"var(--muted)",fontSize:"11px"}}>${routeName} · ${routeMin} min · ${(dist/42).toFixed(1)} km</span></div>
-          </div>
-          <div class=${`am-dock ${controlsVisible ? "" : "hidden"}`} onMouseMove=${resetHideTimer}>
-            <div class="am-scrub-pill">
-              <div class="yt-track"><div class="yt-fill" style=${{width:`${progress*100}%`}}></div></div>
-            </div>
-          </div>
-          <div class=${`am-controls ${controlsVisible ? "" : "hidden"}`} onMouseMove=${resetHideTimer}>
-              ${!isRunning
-                ? html`<button class="am-icon primary" aria-label="Hit the road" title="Hit the road" onClick=${handleHitRoad}><${IconPlay} /></button>`
-                : html`<button class="am-icon primary" aria-label=${isPaused ? "Resume" : "Pause"} title=${isPaused ? "Resume" : "Pause"} onClick=${handlePauseToggle}>${isPaused ? html`<${IconPlay} />` : html`<${IconPause} />`}</button>`}
-              <button class="am-icon small" aria-label="Reset" title="Reset" onClick=${handleReset}><${IconReset} /></button>
-              <div class="am-divider"></div>
-              <span class="am-time">${timeLabel} · ${Math.round(progress*100)}%</span>
-              <button class="am-icon small" aria-label="Exit fullscreen" title="Exit (Esc)" onClick=${exitMapFullscreen}><${IconExit} /></button>
-          </div>
-        </div>
-      </div>`
-        : html`<div class="windowed-wrap">
-        <div class="sheet-wrap">
+      <div class="content-area" style=${{display:"flex", flex:"1", gap:"12px", margin: isFullscreen?"0":"12px 20px", minHeight:"0"}}>
+        <div class="sheet-wrap" style=${{display: isFullscreen?"none":"flex"}}>
           <div class="sheet-head"><h2>Routes</h2><span style=${{color:"var(--muted)",fontSize:"11px",cursor:"pointer"}} onClick=${()=>{ loadLogs(); setShowLog(true) }}>Trip Log ${(()=>{try{ const n=JSON.parse(localStorage.getItem("rf_sessions")||"[]").length; return n?`(${n})`:""}catch{return ""}})()}</span></div>
           <div class="sheet-tabs">
             <button class=${`sheet-tab ${sheetTab==="onroad"?"active":""}`} onClick=${()=>setSheetTab("onroad")}>On the road ${(()=>{const c=ROUTES.length; return `(${c})`})()}</button>
@@ -726,26 +682,53 @@ hills.forEach(([col,speed,tile,amp,freq])=>{
             <div class="quote">“${["Focus is a muscle","Small consistent sessions beat long distracted ones","Deep work now, freedom later"][Math.floor(Date.now()/8000)%3]}”</div>
           </div>
         </div>
-        <div class="sheet-map-wrap">
-          <div ref=${canvasWrapRef} class="canvas-wrap" style=${{margin:"0", flex:"1", height:"100%", border:"none", boxShadow:"none", borderRadius:"0"}}><canvas ref=${canvasRef} style=${{width:"100%",height:"100%"}}></canvas>
-            <button class="am-fs" aria-label=${isFullscreen ? "Exit fullscreen" : "Enter fullscreen"} title=${isFullscreen ? "Exit fullscreen (Esc)" : "Fullscreen (F)"} onClick=${()=> isFullscreen ? exitMapFullscreen() : enterMapFullscreen()}>
-              ${isFullscreen ? html`<${IconExit} />` : html`<${IconExpand} />`}
-            </button>
-            <${AnimatePresence}>
-              $${showDone ? html`<${motion.div} key="done" initial=${{x:400, opacity:0}} animate=${{x:0, opacity:1}} exit=${{x:400, opacity:0}} transition=${{type:"spring", stiffness:320, damping:28}} style=${{position:"absolute", top:"16px", right:"16px", width:"340px", background:"rgba(15,20,25,0.96)", backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)", border:"1px solid rgba(30,42,51,0.9)", borderRadius:"12px", padding:"14px", zIndex:20, boxShadow:"0 20px 40px rgba(0,0,0,0.5)"}}>
-                <div style=${{color:"var(--accent)", fontWeight:800, fontSize:"13px"}}>Journey completed ✓</div>
-                <div style=${{color:"var(--text)", fontSize:"12px", marginTop:"4px"}}>${doneInfo?.route} · ${doneInfo?.duration_min} min</div>
-                <div style=${{color:"var(--muted)", fontSize:"11px", fontStyle:"italic", marginTop:"2px", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis"}}>${doneInfo?.intent}</div>
-                <div style=${{display:"flex", gap:"8px", marginTop:"10px"}}>
-                  <button onClick=${()=>setShowDone(false)} style=${{flex:1, padding:"6px", borderRadius:"8px", background:"var(--accent)", color:"#00140e", border:"none", fontWeight:700, cursor:"pointer"}}>Dismiss</button>
-                  <button onClick=${()=>{ setShowDone(false); loadLogs(); setShowLog(true) }} style=${{padding:"6px 10px", borderRadius:"8px", background:"var(--surface)", border:"1px solid var(--outline)", color:"var(--muted)", cursor:"pointer"}}>Trip Log</button>
-                </div>
-              </motion.div>` : null}
-            </${AnimatePresence}>
-          </div>
+        <div ref=${canvasWrapRef} class="canvas-wrap"
+        onMouseMove=${resetHideTimer}
+        onTouchStart=${resetHideTimer}
+        onClick=${(e)=>{
+          const t=e.target
+          if(t.closest && (t.closest(".am-controls")||t.closest(".am-scrub-pill")||t.closest(".am-top-pill")||t.closest(".am-fs"))) return
+          if(!isFullscreen) return
+          if(!controlsVisible) setControlsVisible(true)
+          resetHideTimer()
+        }}
+        style=${{flex:"1", margin:"0"}}>
+          <canvas ref=${canvasRef} style=${{width:"100%",height:"100%"}}></canvas>
+          <button class="am-fs" aria-label=${isFullscreen ? "Exit fullscreen" : "Enter fullscreen"} title=${isFullscreen ? "Exit fullscreen (Esc)" : "Fullscreen (F)"} onClick=${()=> isFullscreen ? exitMapFullscreen() : enterMapFullscreen()}>
+            ${isFullscreen ? html`<${IconExit} />` : html`<${IconExpand} />`}
+          </button>
+          <${AnimatePresence}>
+            $${showDone ? html`<${motion.div} key="done" initial=${{x:400, opacity:0}} animate=${{x:0, opacity:1}} exit=${{x:400, opacity:0}} transition=${{type:"spring", stiffness:320, damping:28}} style=${{position:"absolute", top:"16px", right:"16px", width:"340px", background:"rgba(15,20,25,0.96)", backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)", border:"1px solid rgba(30,42,51,0.9)", borderRadius:"12px", padding:"14px", zIndex:20, boxShadow:"0 20px 40px rgba(0,0,0,0.5)"}}>
+              <div style=${{color:"var(--accent)", fontWeight:800, fontSize:"13px"}}>Journey completed ✓</div>
+              <div style=${{color:"var(--text)", fontSize:"12px", marginTop:"4px"}}>${doneInfo?.route} · ${doneInfo?.duration_min} min</div>
+              <div style=${{color:"var(--muted)", fontSize:"11px", fontStyle:"italic", marginTop:"2px", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis"}}>${doneInfo?.intent}</div>
+              <div style=${{display:"flex", gap:"8px", marginTop:"10px"}}>
+                <button onClick=${()=>setShowDone(false)} style=${{flex:1, padding:"6px", borderRadius:"8px", background:"var(--accent)", color:"#00140e", border:"none", fontWeight:700, cursor:"pointer"}}>Dismiss</button>
+                <button onClick=${()=>{ setShowDone(false); loadLogs(); setShowLog(true) }} style=${{padding:"6px 10px", borderRadius:"8px", background:"var(--surface)", border:"1px solid var(--outline)", color:"var(--muted)", cursor:"pointer"}}>Trip Log</button>
+              </div>
+            </motion.div>` : null}
+          </${AnimatePresence}>
+          ${isFullscreen ? html`<div style=${{position:"absolute",inset:"0",pointerEvents:"none"}}>
+            <div class=${`am-top ${controlsVisible ? "" : "hidden"}`}>
+              <div class="am-top-pill"><b>${intent||"No intent"}</b><span style=${{color:"var(--muted)",fontSize:"11px"}}>${routeName} · ${routeMin} min · ${(dist/42).toFixed(1)} km</span></div>
+            </div>
+            <div class=${`am-dock ${controlsVisible ? "" : "hidden"}`} onMouseMove=${resetHideTimer}>
+              <div class="am-scrub-pill">
+                <div class="yt-track"><div class="yt-fill" style=${{width:`${progress*100}%`}}></div></div>
+              </div>
+            </div>
+            <div class=${`am-controls ${controlsVisible ? "" : "hidden"}`} onMouseMove=${resetHideTimer}>
+                ${!isRunning
+                  ? html`<button class="am-icon primary" aria-label="Hit the road" title="Hit the road" onClick=${handleHitRoad}><${IconPlay} /></button>`
+                  : html`<button class="am-icon primary" aria-label=${isPaused ? "Resume" : "Pause"} title=${isPaused ? "Resume" : "Pause"} onClick=${handlePauseToggle}>${isPaused ? html`<${IconPlay} />` : html`<${IconPause} />`}</button>`}
+                <button class="am-icon small" aria-label="Reset" title="Reset" onClick=${handleReset}><${IconReset} /></button>
+                <div class="am-divider"></div>
+                <span class="am-time">${timeLabel} · ${Math.round(progress*100)}%</span>
+                <button class="am-icon small" aria-label="Exit fullscreen" title="Exit (Esc)" onClick=${exitMapFullscreen}><${IconExit} /></button>
+            </div>
+          </div>` : null}
         </div>
-      </div>`
-      }
+      </div>
       ${showLog ? html`<div class="log-overlay" onClick=${()=>setShowLog(false)}>
         <${motion.div} class="log-card" initial=${{y:16, opacity:0}} animate=${{y:0, opacity:1}} exit=${{y:16, opacity:0}} onClick=${e=>e.stopPropagation()}>
           <div class="log-head">
