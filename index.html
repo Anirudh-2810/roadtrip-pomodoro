@@ -167,6 +167,9 @@
   .cover-cta{margin-top:2px;display:flex;gap:10px;justify-content:center}
   .cover-cta .btn{flex:1;max-width:280px;justify-content:center;display:inline-flex;align-items:center;gap:8px;padding:12px 18px;font-size:14px}
   .cover-hint{color:var(--muted);font-size:11px;opacity:0.9}
+  .sheet-row{position:relative}
+  .sheet-row-del{position:absolute;top:8px;right:8px;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(204,51,51,0.12);border:1px solid rgba(204,51,51,0.25);color:#ff6b6b;cursor:pointer;font-size:12px;line-height:1}
+  .sheet-row-del:hover{background:rgba(204,51,51,0.18)}
   @media (max-width:720px){.timer-row{flex-direction:column}.time-card{flex:1}.hud-top,.hud-bottom{min-width:92%}}
 </style>
 </head>
@@ -471,6 +474,16 @@ function App(){
     localStorage.removeItem("rf_sessions")
     setLogRows([])
   }
+  const deleteTransit = (finished_at)=>{
+    if(!confirm("Delete this in-transit trip?")) return
+    try{
+      const arr=JSON.parse(localStorage.getItem("rf_sessions")||"[]")
+      const nxt=arr.filter(r=> String(r.finished_at)!==String(finished_at))
+      localStorage.setItem("rf_sessions", JSON.stringify(nxt))
+      loadLogs()
+      if(detailItem && String(detailItem.finished_at)===String(finished_at)) setDetailItem(null)
+    }catch{}
+  }
   const exportLogs = ()=>{
     const rows=logRows.length? logRows : JSON.parse(localStorage.getItem("rf_sessions")||"[]").slice().reverse()
     if(!rows.length) return
@@ -687,7 +700,8 @@ hills.forEach(([col,speed,tile,amp,freq])=>{
                   <div class="sheet-row-sub">Order #RO-${r[1]}${r[1]*100} · ${(r[1]*SCENERY_SPEED*0.35/42).toFixed(1)} km · ${r[2]}</div>
                 </div>`)}
                 ${logRows.filter(r=>!r.completed).slice(0,3).map(r=> html`<div key=${r.finished_at} class="sheet-row" onClick=${()=>setDetailItem(r)}>
-                  <div class="sheet-row-top"><span>${(r.intent||"No intent").slice(0,18)} → ${r.route||""}</span><span class="sheet-badge transit">IN TRANSIT</span></div>
+                  <button class="sheet-row-del" title="Delete" onClick=${e=>{ e.stopPropagation(); deleteTransit(r.finished_at) }}>✕</button>
+                  <div class="sheet-row-top" style=${{paddingRight:"28px"}}><span>${(r.intent||"No intent").slice(0,18)} → ${r.route||""}</span><span class="sheet-badge transit">IN TRANSIT</span></div>
                   <div class="sheet-row-sub">Order #${(r.finished_at||"").slice(11,16).replace(":","")}${Math.floor(Math.random()*900+100)} · ${r.km||0} km · ${r.duration_min||0} min ago</div>
                 </div>`)}
                 ${ROUTES.length===0 ? html`<div class="sheet-empty">No routes</div>` : null}
@@ -714,6 +728,7 @@ hills.forEach(([col,speed,tile,amp,freq])=>{
               <div style=${{display:"flex",gap:"8px",marginTop:"6px"}}>
                 <button onClick=${()=>setDetailItem(null)} style=${{flex:1,padding:"6px",borderRadius:"8px",background:"var(--accent)",color:"#00140e",border:"none",fontWeight:700,cursor:"pointer"}}>Close</button>
                 <button onClick=${()=>{ setDetailItem(null); setRouteName(detailItem.route||ROUTES[0][0]); const m=ROUTES.find(x=>x[0]===detailItem.route); if(m){setRouteMin(m[1]); setTotal(m[1]*60); setRemaining(m[1]*60)} }} style=${{padding:"6px 10px",borderRadius:"8px",background:"var(--surface2)",border:"1px solid var(--outline)",color:"var(--text)",cursor:"pointer"}}>Use route</button>
+                ${!detailItem.completed ? html`<button onClick=${()=>{ deleteTransit(detailItem.finished_at) }} style=${{padding:"6px 10px",borderRadius:"8px",background:"rgba(204,51,51,0.12)",border:"1px solid rgba(204,51,51,0.28)",color:"#ff6b6b",cursor:"pointer",fontWeight:700}}>Delete</button>` : null}
               </div>
             </div>` : null}
           </div>
