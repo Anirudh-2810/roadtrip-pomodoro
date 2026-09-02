@@ -154,6 +154,19 @@
   .stats button{padding:5px 10px;border-radius:8px;background:var(--surface);border:1px solid var(--outline);color:var(--accent);cursor:pointer}
   .top-actions{position:absolute;top:12px;right:14px;display:flex;gap:8px}
   .top-actions button{padding:6px 12px;border-radius:8px;background:var(--surface);border:1px solid var(--outline);color:var(--text);cursor:pointer;font-size:12px;font-weight:700}
+  /* cover — Are you ready to hit the road? → Let's roll */
+  .cover-overlay{position:fixed;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(7,10,14,0.78);backdrop-filter:blur(18px) saturate(1.15);-webkit-backdrop-filter:blur(18px)}
+  .cover-card{width:min(440px,92vw);background:rgba(15,20,25,0.96);border:1px solid rgba(30,42,51,0.92);border-radius:18px;padding:22px 20px 18px;box-shadow:0 24px 48px rgba(0,0,0,0.55),0 1px 0 rgba(255,255,255,0.06) inset;display:flex;flex-direction:column;gap:14px;text-align:center}
+  .cover-eyebrow{color:var(--accent);font-size:11px;letter-spacing:1.2px;font-weight:800}
+  .cover-title{font-size:22px;font-weight:800;color:var(--text);line-height:1.2;letter-spacing:0.2px}
+  .cover-sub{color:var(--muted);font-size:13px;line-height:1.45}
+  .cover-intent{text-align:left;background:var(--surface);border:1px solid var(--outline);border-radius:12px;padding:10px 12px}
+  .cover-intent label{color:var(--muted);font-weight:700;font-size:11px;display:block;margin-bottom:6px}
+  .cover-intent input{width:100%;background:var(--surface2);border:1px solid var(--outline);color:var(--text);border-radius:8px;padding:8px 10px;outline:none;font-size:13px}
+  .cover-intent input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,230,154,0.15)}
+  .cover-cta{margin-top:2px;display:flex;gap:10px;justify-content:center}
+  .cover-cta .btn{flex:1;max-width:280px;justify-content:center;display:inline-flex;align-items:center;gap:8px;padding:12px 18px;font-size:14px}
+  .cover-hint{color:var(--muted);font-size:11px;opacity:0.9}
   @media (max-width:720px){.timer-row{flex-direction:column}.time-card{flex:1}.hud-top,.hud-bottom{min-width:92%}}
 </style>
 </head>
@@ -217,6 +230,8 @@ function App(){
   const [vol,setVol]=useState(0.12)
   const [sheetTab,setSheetTab]=useState("onroad")
   const [detailItem,setDetailItem]=useState(null)
+  const [showCover,setShowCover]=useState(()=>{ try{ return !sessionStorage.getItem("rf_cover_dismissed")}catch{ return true }})
+  const dismissCover=()=>{ try{ sessionStorage.setItem("rf_cover_dismissed","1")}catch{}; setShowCover(false) }
   const prevKindRef=useRef(noiseKind)
   const prevHumRef=useRef(humOn)
   const canvasRef=useRef(null)
@@ -640,6 +655,18 @@ hills.forEach(([col,speed,tile,amp,freq])=>{
   }
   return html`
     <div class=${isFullscreen ? "is-fs-mode" : ""} style=${{height:"100%",display:"flex",flexDirection:"column"}}>
+      <${AnimatePresence}>
+        ${showCover ? html`<${motion.div} class="cover-overlay" key="cover" initial=${{opacity:0}} animate=${{opacity:1}} exit=${{opacity:0}} transition=${{duration:0.25}} onClick=${(e)=>{ if(e.target.classList.contains("cover-overlay")) dismissCover() }}>
+          <${motion.div} class="cover-card" initial=${{y:18, opacity:0}} animate=${{y:0, opacity:1}} exit=${{y:-12, opacity:0}} transition=${{type:"spring", stiffness:320, damping:26}}>
+            <div class="cover-eyebrow">READY TO ROLL</div>
+            <div class="cover-title">Are you ready to hit the road?</div>
+            <div class="cover-sub">Pick a route, set your intent, and drive into deep work.</div>
+            <div class="cover-intent"><label>Intent</label><input value=${intent} onInput=${e=>setIntent(e.target.value)} onKeyDown=${e=>{ if(e.key==="Enter") dismissCover() }} placeholder='e.g. "finish problem set 3.1"' autoFocus /></div>
+            <div class="cover-cta"><${motion.button} whileTap=${{scale:0.97}} class="btn primary" onClick=${dismissCover}>Let's roll →</${motion.button}></div>
+            <div class="cover-hint">Road keeps idling behind — dim, not paused.</div>
+          </${motion.div}>
+        </${motion.div}>` : null}
+      </${AnimatePresence}>
       <header>
         <h1>ROADTRIP FOCUS</h1><p>pick a route · set your intent · drive</p>
         <div class="phase">${isRunning? `On the road — ${routeName}`: "Ready to roll"}</div>
