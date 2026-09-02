@@ -26,6 +26,9 @@
   header h1{margin:0;font-size:19px;letter-spacing:1.4px;color:var(--accent);font-weight:800}
   header p{margin:3px 0 0;color:var(--muted);font-size:11px;letter-spacing:0.3px}
   .phase{margin-top:6px;color:#9ab0a0;font-size:12px;font-weight:600}
+  .sheet-title{padding:14px 14px 10px;text-align:left;background:var(--surface);border-bottom:1px solid var(--outline)}
+  .sheet-title h1{margin:0;font-size:14px;letter-spacing:0.8px;color:var(--accent);font-weight:800}
+  .sheet-title .phase{margin-top:4px;color:#9ab0a0;font-size:11px;font-weight:600}
   /* traffic removed — mac look without dots, header centered like Apple Music */
   .canvas-wrap{flex:1;position:relative;margin:12px 20px;background:var(--surface);border-radius:18px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);box-shadow:0 24px 48px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)}
   canvas{width:100%;height:100%;display:block}
@@ -38,7 +41,7 @@
   .canvas-wrap:-webkit-full-screen{margin:0;border-radius:0;border:none;box-shadow:none;width:100vw;height:100vh}
   .canvas-wrap.fs-fallback{position:fixed;inset:0;z-index:9999;margin:0;border-radius:0;border:none;box-shadow:none;width:100vw;height:100vh}
   .canvas-wrap:fullscreen canvas,.canvas-wrap:-webkit-full-screen canvas,.canvas-wrap.fs-fallback canvas{height:100%}
-  .is-fs-mode header,.is-fs-mode .intent,.is-fs-mode .route,.is-fs-mode .timer-row,.is-fs-mode .controls,.is-fs-mode .sound,.is-fs-mode .quick,.is-fs-mode .quote,.is-fs-mode .stats,.is-fs-mode .windowed-wrap{display:none !important}
+  .is-fs-mode header,.is-fs-mode .sheet-title,.is-fs-mode .intent,.is-fs-mode .route,.is-fs-mode .timer-row,.is-fs-mode .controls,.is-fs-mode .sound,.is-fs-mode .quick,.is-fs-mode .quote,.is-fs-mode .stats,.is-fs-mode .windowed-wrap{display:none !important}
   .fs-btn{display:none !important}
   /* windowed sheet + history (dark, Globetrans split) */
   .windowed-wrap{display:flex;gap:12px;margin:12px 20px;flex:1;min-height:0}
@@ -78,7 +81,7 @@
   .hud-main .hud-progress .bar{height:6px}
   .hud-main .hud-meta{display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums}
   .hud-main .am-icon.small{width:32px;height:32px}
-  .sheet-map-wrap{flex:1;position:relative;background:var(--surface);border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);box-shadow:0 20px 40px rgba(0,0,0,0.45), 0 8px 24px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06);min-height:420px;display:flex;flex-direction:column}
+  .sheet-map-wrap{flex:1;position:relative;background:var(--surface);border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);box-shadow:0 20px 40px rgba(0,0,0,0.45), 0 8px 24px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06);min-height:0;display:flex;flex-direction:column;align-self:stretch}
   .sheet-map-wrap .canvas-wrap{margin:0;flex:1;border:none;box-shadow:none;border-radius:0;height:auto}
   .sheet-detail{position:absolute;inset:8px;background:var(--surface);border:1px solid var(--outline);border-radius:12px;padding:12px;box-shadow:0 16px 32px rgba(0,0,0,0.45);z-index:5;display:flex;flex-direction:column;gap:8px}
   .sheet-detail h3{margin:0;font-size:13px;font-weight:800;color:var(--text)}
@@ -717,13 +720,9 @@ hills.forEach(([col,speed,tile,amp,freq])=>{
           </${motion.div}>
         </${motion.div}>` : null}
       </${AnimatePresence}>
-      <header>
-        <h1>ROADTRIP FOCUS</h1><p>pick a route · set your intent · drive</p>
-        <div class="phase">${isRunning? `On the road — ${routeName}`: "Ready to roll"}</div>
-      </header>
-
       <div class="content-area" style=${{display:"flex", flex:"1", gap:"12px", margin: isFullscreen?"0":"12px 20px", minHeight:"0"}}>
         <div class="sheet-wrap" style=${{display: isFullscreen?"none":"flex"}}>
+          <div class="sheet-title"><h1>ROADTRIP FOCUS</h1><div class="phase">${isRunning? `On the road — ${routeName}`: "Ready to roll"}</div></div>
           <div class="sheet-head"><h2>Routes</h2><span style=${{color:"var(--muted)",fontSize:"11px",cursor:"pointer"}} onClick=${()=>{ loadLogs(); setShowLog(true) }}>Trip Log ${(()=>{try{ const n=JSON.parse(localStorage.getItem("rf_sessions")||"[]").length; return n?`(${n})`:""}catch{return ""}})()}</span></div>
           <div class="sheet-tabs">
             <button class=${`sheet-tab ${sheetTab==="onroad"?"active":""}`} onClick=${()=>setSheetTab("onroad")}>On the road ${(()=>{const c=ROUTES.length; return `(${c})`})()}</button>
