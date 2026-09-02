@@ -64,7 +64,7 @@
   .sheet-badge.transit{background:var(--accent);color:#00140e}
   .sheet-badge.delivered{background:var(--surface);color:var(--muted);border:1px solid var(--outline)}
   .sheet-empty{padding:28px 14px;text-align:center;color:var(--muted);font-style:italic;font-size:12px}
-  .sheet-footer{padding:10px 14px;border-top:1px solid var(--outline);display:flex;flex-direction:column;gap:10px;background:var(--surface)}
+  .sheet-footer{padding:12px 12px;border-top:1px solid rgba(255,255,255,0.08);display:flex;flex-direction:column;gap:10px;background:rgba(28,30,34,0.62);backdrop-filter:blur(12px) saturate(180%);-webkit-backdrop-filter:blur(12px) saturate(180%);border:1px solid rgba(255,255,255,0.10);border-top:1px solid rgba(255,255,255,0.10);box-shadow:0 12px 40px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.06)}
   .sheet-footer .timer-row{margin:0}
   .sheet-footer .time-card{flex:0 0 140px}
   .sheet-footer .time{font-size:28px}
@@ -72,6 +72,12 @@
   .sheet-footer .sound{margin:0}
   .sheet-footer .quick{margin:0}
   .sheet-footer .quote{margin:6px 0 0}
+  .hud-main{display:flex;align-items:center;gap:12px;padding:12px 14px;background:rgba(28,30,34,0.72);backdrop-filter:blur(12px) saturate(180%);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.10);border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.06)}
+  .hud-main .hud-time{font-family:ui-monospace,Consolas,monospace;font-size:22px;font-weight:800;color:var(--accent);letter-spacing:0.5px;min-width:78px;text-align:center;font-variant-numeric:tabular-nums}
+  .hud-main .hud-progress{flex:1;display:flex;flex-direction:column;gap:6px}
+  .hud-main .hud-progress .bar{height:6px}
+  .hud-main .hud-meta{display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .hud-main .am-icon.small{width:32px;height:32px}
   .sheet-map-wrap{flex:1;position:relative;background:var(--surface);border-radius:16px;overflow:hidden;border:1px solid rgba(16,185,129,0.18);box-shadow:0 0 20px rgba(16,185,129,0.15), 0 8px 24px rgba(0,0,0,0.35);min-height:420px;display:flex;flex-direction:column}
   .sheet-map-wrap .canvas-wrap{margin:0;flex:1;border:none;box-shadow:none;border-radius:0;height:auto}
   .sheet-detail{position:absolute;inset:8px;background:var(--surface);border:1px solid var(--outline);border-radius:12px;padding:12px;box-shadow:0 16px 32px rgba(0,0,0,0.45);z-index:5;display:flex;flex-direction:column;gap:8px}
@@ -684,7 +690,7 @@ hills.forEach(([col,speed,tile,amp,freq])=>{
   }
   const fmt=(s)=> String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0")
   const timeLabel = fmt(remaining)
-  const handleHitRoad = ()=>{ startedAtRef.current=new Date().toISOString(); setIsRunning(true); setIsPaused(false); setSeed(Math.random()) }
+  const handleHitRoad = ()=>{ if(isRunning) return; startedAtRef.current=new Date().toISOString(); setIsRunning(true); setIsPaused(false); setSeed(Math.random()) }
   const handlePauseToggle = ()=>{ if(!isRunning) return; setIsPaused(p=>!p) }
   const handleReset = ()=>{
     // log abandoned if was running mid-trip
@@ -764,15 +770,16 @@ hills.forEach(([col,speed,tile,amp,freq])=>{
             </div>` : null}
           </div>
           <div class="sheet-footer">
-            <div class="timer-row">
-              <div class="time-card"><div class="time">${fmt(remaining)}</div><div class="cap">mm:ss</div></div>
-              <div class="progress-card"><div class="bar"><${motion.div} class="fill" animate=${{width:`${progress*100}%`}} transition=${{type:"spring",stiffness:120,damping:18}} /></div><div style=${{fontSize:"11px",color:"var(--muted)",marginTop:"6px",display:"flex",justifyContent:"space-between",alignItems:"center"}}><span>${(dist/42).toFixed(1)} km · CRUISE</span><span class="pct">${Math.round(progress*100)}%</span></div></div>
-            </div>
-            <div class="controls">
-              <${motion.button} whileTap=${{scale:0.97}} class="btn primary" disabled=${isRunning} onClick=${handleHitRoad}>Hit the road</${motion.button}>
-              <button class="btn" disabled=${!isRunning} onClick=${handlePauseToggle}>${isPaused?"Resume":"Pause"}</button>
-              <button class="btn" onClick=${handleReset}>Reset</button>
-            </div>
+            <${AnimatePresence} mode="wait">
+              <${motion.div} key=${isRunning ? (isPaused ? "paused" : "active") : "idle"} initial=${{opacity:0, y:6}} animate=${{opacity:1, y:0}} exit=${{opacity:0, y:-6}} transition=${{duration:0.18}} class="hud-main">
+                <div class="hud-time">${fmt(remaining)}</div>
+                <div class="hud-progress"><div class="bar"><${motion.div} class="fill" animate=${{width:`${progress*100}%`}} transition=${{type:"spring",stiffness:120,damping:18}} /></div><div class="hud-meta"><span>${(dist/42).toFixed(1)} km · CRUISE</span><span class="pct">${Math.round(progress*100)}%</span></div></div>
+                ${!isRunning
+                  ? html`<${motion.button} whileTap=${{scale:0.97}} class="am-icon primary" aria-label="Hit the road" title="Hit the road (Space)" onClick=${handleHitRoad}><${IconPlay} /></${motion.button}>`
+                  : html`<button class="am-icon primary" aria-label=${isPaused ? "Resume" : "Pause"} title=${isPaused ? "Resume (Space)" : "Pause (Space)"} onClick=${handlePauseToggle}>${isPaused ? html`<${IconPlay} />` : html`<${IconPause} />`}</button>`}
+                ${(isRunning || remaining!==total) ? html`<button class="am-icon small" aria-label="Reset" title="Reset (R)" onClick=${handleReset}><${IconReset} /></button>` : null}
+              </${motion.div}>
+            </${AnimatePresence}>
             <div class="sound">
               <label><input type="checkbox" checked=${humOn} onChange=${e=>setHumOn(e.target.checked)}/> Road hum</label>
               <input type="range" min="0" max="0.5" step="0.02" value=${vol} onInput=${e=>setVol(parseFloat(e.target.value))}/>
