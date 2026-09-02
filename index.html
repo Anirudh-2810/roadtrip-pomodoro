@@ -19,15 +19,15 @@
 }
 </script>
 <style>
-  :root{--bg:#070a0e;--surface:#0f1419;--surface2:#141b22;--outline:rgba(30,42,51,0.8);--text:#e6f0e6;--muted:#7a8a7a;--accent:#00e69a;--r:14px;--fs-bg:#121212;--fs-road:#1a1a1a;--fs-neon:#00FF66;--fs-mountain:#0d1a25;--fs-tree:#1e5b30;--fs-mileage:#ffffff;--fs-star:#ffffff;--fs-sky-top:#0a0e14;--fs-sky-horizon:#121820}
+  :root{--bg:#09090B;--surface:#121212;--surface2:#1a1a1e;--outline:rgba(255,255,255,0.08);--text:#e6f0e6;--muted:#7a8a7a;--accent:#10B981;--accent2:#059669;--r:14px;--fs-bg:#121212;--fs-road:#1a1a1a;--fs-neon:#10B981;--fs-mountain:#0d1a25;--fs-tree:#1e5b30;--fs-mileage:#ffffff;--fs-star:#ffffff;--fs-sky-top:#0a0e14;--fs-sky-horizon:#121820}
   *{box-sizing:border-box} html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Inter,Arial,sans-serif;-webkit-font-smoothing:antialiased}
   #root{height:100%;display:flex;flex-direction:column}
   header{padding:14px 16px 10px;text-align:center;position:relative}
-  header h1{margin:0;font-size:19px;letter-spacing:1.4px;color:var(--accent);font-weight:800}
+  header h1{margin:0;font-size:19px;letter-spacing:1.4px;color:var(--accent);font-weight:800;text-shadow:0 0 12px rgba(16,185,129,0.45)}
   header p{margin:3px 0 0;color:var(--muted);font-size:11px;letter-spacing:0.3px}
   .phase{margin-top:6px;color:#9ab0a0;font-size:12px;font-weight:600}
   /* traffic removed — mac look without dots, header centered like Apple Music */
-  .canvas-wrap{flex:1;position:relative;margin:12px 20px;background:#0a0a0a;border-radius:18px;overflow:hidden;border:1px solid var(--outline);box-shadow:0 24px 48px rgba(0,0,0,0.55)}
+  .canvas-wrap{flex:1;position:relative;margin:12px 20px;background:var(--surface);border-radius:18px;overflow:hidden;border:1px solid rgba(16,185,129,0.18);box-shadow:0 0 20px rgba(16,185,129,0.22), 0 24px 48px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)}
   canvas{width:100%;height:100%;display:block}
   .hud{position:absolute;inset:0;pointer-events:none}
   .hud-card{position:absolute;background:rgba(15,20,25,0.88);backdrop-filter:blur(16px) saturate(1.2);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(30,42,51,0.9);border-radius:12px;padding:8px 12px;display:flex;gap:10px;align-items:center;pointer-events:auto;box-shadow:0 8px 24px rgba(0,0,0,0.45)}
@@ -49,11 +49,11 @@
   .sheet-head span{color:var(--muted);font-size:11px;cursor:pointer}
   .sheet-tabs{display:flex;gap:8px;padding:10px 14px;border-bottom:1px solid var(--outline)}
   .sheet-tab{flex:1;padding:6px 10px;border-radius:999px;border:1px solid var(--outline);background:var(--surface2);color:var(--muted);font-size:12px;font-weight:700;cursor:pointer;text-align:center;transition:background .15s, color .15s}
-  .sheet-tab.active{background:var(--accent);color:#00140e;border-color:var(--accent);box-shadow:0 2px 8px rgba(0,230,154,0.2)}
+  .sheet-tab.active{background:var(--accent);color:#00140e;border-color:var(--accent);box-shadow:0 2px 8px rgba(16,185,129,0.25)}
   .sheet-intent{padding:10px 14px;border-bottom:1px solid var(--outline)}
   .sheet-intent label{color:var(--muted);font-weight:700;font-size:11px;display:block;margin-bottom:6px}
-  .sheet-intent input{width:100%;background:var(--surface2);border:1px solid var(--outline);color:var(--text);border-radius:8px;padding:7px 10px;outline:none;font-size:12px}
-  .sheet-intent input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,230,154,0.15)}
+  .sheet-intent input{width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.10);backdrop-filter:blur(16px) saturate(150%);-webkit-backdrop-filter:blur(16px);color:var(--text);border-radius:10px;padding:7px 10px;outline:none;font-size:12px}
+  .sheet-intent input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(16,185,129,0.22), 0 0 12px rgba(16,185,129,0.3)}
   .sheet-list{flex:1;overflow:auto;padding:8px 8px 0;min-height:160px}
   .sheet-row{padding:10px 10px;border:1px solid var(--outline);background:var(--surface2);border-radius:12px;margin-bottom:8px;cursor:pointer;transition:border-color .15s, background .15s}
   .sheet-row:hover{border-color:rgba(0,230,154,0.35)}
@@ -72,7 +72,7 @@
   .sheet-footer .sound{margin:0}
   .sheet-footer .quick{margin:0}
   .sheet-footer .quote{margin:6px 0 0}
-  .sheet-map-wrap{flex:1;position:relative;background:#0a0a0a;border-radius:16px;overflow:hidden;border:1px solid var(--outline);box-shadow:0 8px 24px rgba(0,0,0,0.35);min-height:420px;display:flex;flex-direction:column}
+  .sheet-map-wrap{flex:1;position:relative;background:var(--surface);border-radius:16px;overflow:hidden;border:1px solid rgba(16,185,129,0.18);box-shadow:0 0 20px rgba(16,185,129,0.15), 0 8px 24px rgba(0,0,0,0.35);min-height:420px;display:flex;flex-direction:column}
   .sheet-map-wrap .canvas-wrap{margin:0;flex:1;border:none;box-shadow:none;border-radius:0;height:auto}
   .sheet-detail{position:absolute;inset:8px;background:var(--surface);border:1px solid var(--outline);border-radius:12px;padding:12px;box-shadow:0 16px 32px rgba(0,0,0,0.45);z-index:5;display:flex;flex-direction:column;gap:8px}
   .sheet-detail h3{margin:0;font-size:13px;font-weight:800;color:var(--text)}
@@ -95,7 +95,7 @@
   .am-icon{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.08);color:var(--text);cursor:pointer;transition:background .15s, transform .12s, border-color .15s, box-shadow .15s;flex-shrink:0}
   .am-icon:hover{background:rgba(255,255,255,0.14);transform:scale(1.04);border-color:rgba(255,255,255,0.14)}
   .am-icon:active{transform:scale(0.96)}
-  .am-icon.primary{width:44px;height:44px;background:var(--accent);border-color:var(--accent);color:#00140e;box-shadow:0 4px 16px rgba(0,230,154,0.30)}
+  .am-icon.primary{width:44px;height:44px;background:var(--accent);border-color:var(--accent);color:#00140e;box-shadow:0 0 20px rgba(16,185,129,0.3), 0 4px 16px rgba(0,0,0,0.25)}
   .am-icon.small{width:36px;height:36px}
   .am-divider{width:20px;height:1px;background:rgba(255,255,255,0.08);margin:2px 0;flex-shrink:0}
   .am-time{font-family:ui-monospace,Consolas,monospace;font-size:11px;font-weight:700;color:rgba(255,255,255,0.88);min-width:auto;text-align:center;font-variant-numeric:tabular-nums;letter-spacing:0.2px;white-space:nowrap}
@@ -128,27 +128,28 @@
   @media(max-width:560px){.am-scrub-pill{width:78vw}.am-controls{gap:6px;padding:6px 8px}.am-time{min-width:78px;font-size:10.5px}.am-top-pill{padding:6px 10px;font-size:11px}.log-table{font-size:11px}.log-intent{max-width:160px}}
   .intent{margin:10px 20px;display:flex;gap:10px;align-items:center;background:var(--surface);border:1px solid var(--outline);border-radius:12px;padding:10px 14px}
   .intent label{color:var(--muted);font-weight:700;font-size:12px;min-width:44px}
-  .intent input{flex:1;background:var(--surface);border:1px solid var(--outline);color:var(--text);border-radius:8px;padding:7px 10px;outline:none}
-  .intent input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,230,154,0.15)}
+  .intent input{flex:1;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.10);backdrop-filter:blur(16px) saturate(150%);-webkit-backdrop-filter:blur(16px);color:var(--text);border-radius:10px;padding:7px 10px;outline:none}
+  .intent input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(16,185,129,0.22), 0 0 12px rgba(16,185,129,0.3)}
   .route{margin:0 20px 10px;display:flex;gap:10px;align-items:center;background:var(--surface);border:1px solid var(--outline);border-radius:12px;padding:10px 14px}
-  .route select{background:var(--surface2);color:var(--text);border:1px solid var(--outline);border-radius:8px;padding:6px 10px}
+  .route select{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.10);backdrop-filter:blur(16px) saturate(150%);-webkit-backdrop-filter:blur(16px);color:var(--text);border-radius:8px;padding:6px 10px}
   .timer-row{display:flex;gap:12px;margin:10px 20px;align-items:stretch}
-  .time-card{flex:0 0 240px;background:var(--surface);border:1px solid var(--outline);border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px;box-shadow:0 4px 16px rgba(0,0,0,0.3)}
-  .time{font-family:ui-monospace,Consolas,monospace;font-size:38px;font-weight:800;color:var(--accent);letter-spacing:1px}
+  .time-card{flex:0 0 240px;background:var(--surface);border:1px solid rgba(16,185,129,0.18);border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px;box-shadow:0 0 20px rgba(16,185,129,0.15), 0 4px 16px rgba(0,0,0,0.3)}
+  .time{font-family:ui-monospace,Consolas,monospace;font-size:38px;font-weight:800;color:var(--accent);letter-spacing:1px;text-shadow:0 0 12px rgba(16,185,129,0.45)}
   .cap{color:var(--muted);font-size:11px;margin-top:2px}
-  .progress-card{flex:1;background:var(--surface);border:1px solid var(--outline);border-radius:12px;padding:14px;display:flex;flex-direction:column;justify-content:center;gap:8px}
-  .bar{height:8px;background:var(--surface2);border-radius:999px;overflow:hidden;border:1px solid var(--outline);position:relative}
-  .fill{height:100%;background:var(--accent);width:0%;border-radius:999px}
+  .progress-card{flex:1;background:var(--surface);border:1px solid var(--outline);border-radius:12px;padding:14px;display:flex;flex-direction:column;justify-content:center;gap:8px;position:relative}
+  .bar{height:6px;background:var(--surface2);border-radius:999px;overflow:hidden;border:1px solid var(--outline);position:relative}
+  .fill{height:100%;background:linear-gradient(90deg, var(--accent), var(--accent2));width:0%;border-radius:999px;box-shadow:0 0 12px rgba(16,185,129,0.6), 0 0 20px rgba(16,185,129,0.3)}
+  .pct{font-family:ui-monospace,Consolas,monospace;font-size:11px;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums;letter-spacing:0.2px}
   .controls{display:flex;gap:12px;justify-content:center;margin:14px 20px}
   .btn{padding:11px 18px;border-radius:12px;border:1px solid var(--outline);background:var(--surface);color:var(--text);cursor:pointer;font-weight:700;font-size:13px;transition:transform 0.12s}
   .btn:active{transform:scale(0.97)}
-  .btn.primary{background:var(--accent);color:#00140e;border-color:var(--accent);box-shadow:0 4px 12px rgba(0,230,154,0.25)}
+  .btn.primary{background:var(--accent);color:#00140e;border-color:var(--accent);box-shadow:0 0 20px rgba(16,185,129,0.3), 0 4px 12px rgba(0,0,0,0.25)}
   .btn:disabled{opacity:0.5;cursor:not-allowed}
   .sound{display:flex;gap:10px;align-items:center;justify-content:center;margin:6px 20px;color:var(--muted);font-size:12px;background:var(--surface);border:1px solid var(--outline);border-radius:10px;padding:8px 12px}
-  .sound select{background:var(--surface2);color:var(--text);border:1px solid var(--outline);border-radius:6px;padding:4px 8px}
+  .sound select{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.10);backdrop-filter:blur(16px) saturate(150%);-webkit-backdrop-filter:blur(16px);color:var(--text);border-radius:6px;padding:4px 8px}
   .quick{display:flex;gap:8px;justify-content:center;margin:6px 20px 10px}
   .pill{padding:6px 14px;border-radius:999px;background:var(--surface);border:1px solid var(--outline);color:var(--text);cursor:pointer;font-size:12px;font-weight:600}
-  .pill.active{background:var(--accent);color:#00140e;border-color:var(--accent);box-shadow:0 2px 8px rgba(0,230,154,0.2)}
+  .pill.active{background:var(--accent);color:#00140e;border-color:var(--accent);box-shadow:0 2px 8px rgba(16,185,129,0.25)}
   .quote{text-align:center;color:var(--muted);font-style:italic;font-size:12px;margin:12px 20px 16px;opacity:0.9}
   .stats{display:flex;justify-content:space-between;align-items:center;margin:6px 14px 10px;color:var(--muted);font-size:11px}
   .stats button{padding:5px 10px;border-radius:8px;background:var(--surface);border:1px solid var(--outline);color:var(--accent);cursor:pointer}
@@ -162,8 +163,8 @@
   .cover-sub{color:var(--muted);font-size:13px;line-height:1.45}
   .cover-intent{text-align:left;background:var(--surface);border:1px solid var(--outline);border-radius:12px;padding:10px 12px}
   .cover-intent label{color:var(--muted);font-weight:700;font-size:11px;display:block;margin-bottom:6px}
-  .cover-intent input{width:100%;background:var(--surface2);border:1px solid var(--outline);color:var(--text);border-radius:8px;padding:8px 10px;outline:none;font-size:13px}
-  .cover-intent input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,230,154,0.15)}
+  .cover-intent input{width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.10);backdrop-filter:blur(16px) saturate(150%);-webkit-backdrop-filter:blur(16px);color:var(--text);border-radius:10px;padding:8px 10px;outline:none;font-size:13px}
+  .cover-intent input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(16,185,129,0.22), 0 0 12px rgba(16,185,129,0.3)}
   .cover-cta{margin-top:2px;display:flex;gap:10px;justify-content:center}
   .cover-cta .btn{flex:1;max-width:280px;justify-content:center;display:inline-flex;align-items:center;gap:8px;padding:12px 18px;font-size:14px}
   .cover-hint{color:var(--muted);font-size:11px;opacity:0.9}
@@ -235,6 +236,33 @@ function App(){
   const [detailItem,setDetailItem]=useState(null)
   const [showCover,setShowCover]=useState(()=>{ try{ return !sessionStorage.getItem("rf_cover_dismissed")}catch{ return true }})
   const dismissCover=()=>{ try{ sessionStorage.setItem("rf_cover_dismissed","1")}catch{}; setShowCover(false) }
+  // persistence — rf_state across refresh (P0)
+  useEffect(()=>{
+    try{
+      const raw=localStorage.getItem("rf_state")
+      if(!raw) return
+      const s=JSON.parse(raw)
+      if(Date.now() - (s.ts||0) > 24*3600*1000) return
+      if(s.intent!=null) setIntent(s.intent)
+      if(s.routeName) setRouteName(s.routeName)
+      if(s.routeMin) setRouteMin(s.routeMin)
+      if(s.total) setTotal(s.total)
+      if(s.remaining!=null) setRemaining(s.remaining)
+      if(s.vol!=null) setVol(s.vol)
+      if(s.noiseKind) setNoiseKind(s.noiseKind)
+      if(typeof s.humOn==="boolean") setHumOn(s.humOn)
+      if(s.seed!=null) setSeed(s.seed)
+      if(s.isRunning){ setIsRunning(true); if(s.isPaused) setIsPaused(true); startedAtRef.current = s.startedAt || new Date().toISOString(); t0Ref.current = performance.now() - ((s.total - (s.remaining||0))*1000) - (s.pausedRef||0); pausedRef.current = s.pausedRef||0; if(s.isPaused) pausedAt.current = performance.now() }
+    }catch{}
+  },[])
+  useEffect(()=>{
+    try{
+      const data={ts:Date.now(), intent, routeName, routeMin, total, remaining, vol, noiseKind, humOn, seed, isRunning, isPaused, startedAt: startedAtRef.current, pausedRef: pausedRef.current}
+      localStorage.setItem("rf_state", JSON.stringify(data))
+    }catch{}
+  },[intent, routeName, routeMin, total, remaining, vol, noiseKind, humOn, seed, isRunning, isPaused])
+  useEffect(()=>{ if(!isRunning && !isPaused && remaining===total){ try{ localStorage.removeItem("rf_state") }catch{} } },[isRunning, isPaused, remaining, total])
+  useEffect(()=>{ try{ if("Notification" in window && Notification.permission==="default") Notification.requestPermission() }catch{} },[])
   const prevKindRef=useRef(noiseKind)
   const prevHumRef=useRef(humOn)
   const canvasRef=useRef(null)
@@ -317,13 +345,7 @@ function App(){
     return ()=>{}
   },[isRunning,isPaused,noiseKind,humOn,vol])
 
-  // timer
-  useEffect(()=>{
-    if(!isRunning||isPaused) return
-    const id=setInterval(()=> setRemaining(r=>{ if(r<=1){ setIsRunning(false); onFinish(); return 0 } return r-1 }),1000)
-    return ()=>clearInterval(id)
-  },[isRunning,isPaused])
-  // time-driven dist — A2: tie to progress while running for exact finish (no elapsed drift)
+  // timer + dist — unified RAF single clock (no setInterval drift, 120Hz safe)
   const t0Ref = React.useRef(performance.now())
   const pausedRef = React.useRef(0)
   const pausedAt = React.useRef(null)
@@ -352,12 +374,18 @@ function App(){
           displayDistRef.current=distRenderRef.current
           setDist(displayDistRef.current)
         }
+        const nextRemaining = Math.max(0, total - Math.floor(elapsed))
+        if(nextRemaining !== remaining){
+          if(nextRemaining <= 0){ setRemaining(0); setIsRunning(false); onFinish(); } else { setRemaining(nextRemaining) }
+        } else if(elapsed >= total){
+          if(remaining !== 0){ setRemaining(0); setIsRunning(false); onFinish() }
+        }
       }
       raf=requestAnimationFrame(tick)
     }
     raf=requestAnimationFrame(tick)
     return ()=>cancelAnimationFrame(raf)
-  },[isRunning, isPaused, total])
+  },[isRunning, isPaused, total, remaining])
   // keep t0 in sync on start
   useEffect(()=>{
     if(isRunning && !isPaused){
@@ -443,18 +471,18 @@ function App(){
   },[isFullscreen, isRunning, isPaused])
   useEffect(()=>{
     const onKey = (e)=>{
-      if(e.key==="Escape" && isFullscreen) { exitMapFullscreen() }
-      if(e.key==="f" || e.key==="F") {
-        // F toggles map fullscreen when focus not in input
-        const tag = document.activeElement?.tagName
-        if(tag==="INPUT"||tag==="SELECT"||tag==="TEXTAREA") return
-        e.preventDefault()
-        if(isFullscreen) exitMapFullscreen(); else enterMapFullscreen()
-      }
+      const tag = document.activeElement?.tagName
+      const inInput = tag==="INPUT"||tag==="SELECT"||tag==="TEXTAREA"
+      if(e.key==="Escape" && isFullscreen) { exitMapFullscreen(); return }
+      if(inInput) return
+      if(e.key==="f" || e.key==="F"){ e.preventDefault(); if(isFullscreen) exitMapFullscreen(); else enterMapFullscreen(); return }
+      if(e.code==="Space" || e.key===" "){ e.preventDefault(); if(!isRunning) handleHitRoad(); else handlePauseToggle(); return }
+      if(e.key==="r" || e.key==="R"){ e.preventDefault(); handleReset(); return }
+      if(e.key==="m" || e.key==="M"){ e.preventDefault(); setHumOn(v=>!v); return }
     }
     document.addEventListener("keydown", onKey)
     return ()=> document.removeEventListener("keydown", onKey)
-  },[isFullscreen])
+  },[isFullscreen, isRunning, isPaused, humOn])
 
   // scrubber: read-only display (no seek)
 
@@ -650,6 +678,9 @@ hills.forEach(([col,speed,tile,amp,freq])=>{
     startedAtRef.current=null
     if(window.pywebview && window.pywebview.api && window.pywebview.api.save_session){ try{ window.pywebview.api.save_session(data) }catch{} }
     try{ const arr=JSON.parse(localStorage.getItem("rf_sessions")||"[]"); arr.push(data); localStorage.setItem("rf_sessions",JSON.stringify(arr.slice(-50))); if(showLog) loadLogs() }catch{}
+    try{ if("Notification" in window && Notification.permission==="granted"){ const n=new Notification("Journey completed ✓", {body: `${routeName} · ${elapsedMin} min — ${intent||"No intent"} · ${data.km} km`}); setTimeout(()=>n.close(), 5000) } }catch{}
+    try{ const ctx2 = audioRef.current?.ctx || new (window.AudioContext||window.webkitAudioContext)(); const o=ctx2.createOscillator(), g=ctx2.createGain(); o.type="sine"; o.frequency.value=880; o.connect(g).connect(ctx2.destination); g.gain.setValueAtTime(0, ctx2.currentTime); g.gain.linearRampToValueAtTime(0.18, ctx2.currentTime+0.02); g.gain.exponentialRampToValueAtTime(0.001, ctx2.currentTime+0.6); o.start(); o.stop(ctx2.currentTime+0.65) }catch{}
+    try{ localStorage.removeItem("rf_state") }catch{}
   }
   const fmt=(s)=> String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0")
   const timeLabel = fmt(remaining)
@@ -735,7 +766,7 @@ hills.forEach(([col,speed,tile,amp,freq])=>{
           <div class="sheet-footer">
             <div class="timer-row">
               <div class="time-card"><div class="time">${fmt(remaining)}</div><div class="cap">mm:ss</div></div>
-              <div class="progress-card"><div class="bar"><${motion.div} class="fill" animate=${{width:`${progress*100}%`}} transition=${{type:"spring",stiffness:120,damping:18}} /></div><div style=${{fontSize:"11px",color:"var(--muted)",marginTop:"6px"}}>${(dist/42).toFixed(1)} km · CRUISE</div></div>
+              <div class="progress-card"><div class="bar"><${motion.div} class="fill" animate=${{width:`${progress*100}%`}} transition=${{type:"spring",stiffness:120,damping:18}} /></div><div style=${{fontSize:"11px",color:"var(--muted)",marginTop:"6px",display:"flex",justifyContent:"space-between",alignItems:"center"}}><span>${(dist/42).toFixed(1)} km · CRUISE</span><span class="pct">${Math.round(progress*100)}%</span></div></div>
             </div>
             <div class="controls">
               <${motion.button} whileTap=${{scale:0.97}} class="btn primary" disabled=${isRunning} onClick=${handleHitRoad}>Hit the road</${motion.button}>
