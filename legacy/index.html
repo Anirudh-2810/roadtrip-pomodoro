@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Roadtrip Focus — Drive into deep work</title>
+<script src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@18.2.0",
+    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+    "framer-motion": "https://esm.sh/framer-motion@10.16.4?deps=react@18.2.0,react-dom@18.2.0",
+    "gsap": "https://esm.sh/gsap@3.12.5",
+    "htm": "https://esm.sh/htm@3.1.1?external=react",
+    "pixi.js": "https://esm.sh/pixi.js@7.4.2",
+    "lottie-web": "https://esm.sh/lottie-web@5.12.2"
+  }
+}
+</script>
+<style>
+  :root{--bg:#09090B;--surface:#121212;--surface2:#1a1a1e;--outline:rgba(255,255,255,0.08);--text:#e6f0e6;--muted:#7a8a7a;--accent:#10B981;--accent2:#059669;--r:14px;--fs-bg:#121212;--fs-road:#1a1a1a;--fs-neon:#10B981;--fs-mountain:#0d1a25;--fs-tree:#1e5b30;--fs-mileage:#ffffff;--fs-star:#ffffff;--fs-sky-top:#0a0e14;--fs-sky-horizon:#121820}
+  *{box-sizing:border-box} html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Inter,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+  #root{height:100%;display:flex;flex-direction:column}
+  header{padding:14px 16px 10px;text-align:center;position:relative}
+  header h1{margin:0;font-size:19px;letter-spacing:1.4px;color:var(--accent);font-weight:800}
+  header p{margin:3px 0 0;color:var(--muted);font-size:11px;letter-spacing:0.3px}
+  .phase{margin-top:6px;color:#9ab0a0;font-size:12px;font-weight:600}
+  .sheet-title{padding:14px 14px 10px;text-align:left;background:var(--surface);border-bottom:1px solid var(--outline)}
+  .sheet-title h1{margin:0;font-size:14px;letter-spacing:0.8px;color:var(--accent);font-weight:800}
+  .sheet-title .phase{margin-top:4px;color:#9ab0a0;font-size:11px;font-weight:600}
+  /* traffic removed — mac look without dots, header centered like Apple Music */
+  .canvas-wrap{flex:1;position:relative;margin:12px 20px;background:var(--surface);border-radius:18px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);box-shadow:0 24px 48px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)}
+  canvas{width:100%;height:100%;display:block}
+  .hud{position:absolute;inset:0;pointer-events:none}
+  .hud-card{position:absolute;background:rgba(15,20,25,0.88);backdrop-filter:blur(16px) saturate(1.2);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(30,42,51,0.9);border-radius:12px;padding:8px 12px;display:flex;gap:10px;align-items:center;pointer-events:auto;box-shadow:0 8px 24px rgba(0,0,0,0.45)}
+  .hud-top{top:12px;left:50%;transform:translateX(-50%);min-width:520px;max-width:92%;justify-content:space-between}
+  .hud-bottom{bottom:16px;left:50%;transform:translateX(-50%);min-width:640px;max-width:94%;justify-content:space-between;padding:10px 14px}
+  /* YouTube-style fullscreen: map fills viewport */
+  .canvas-wrap:fullscreen{margin:0;border-radius:0;border:none;box-shadow:none;width:100vw;height:100vh}
+  .canvas-wrap:-webkit-full-screen{margin:0;border-radius:0;border:none;box-shadow:none;width:100vw;height:100vh}
+  .canvas-wrap.fs-fallback{position:fixed;inset:0;z-index:9999;margin:0;border-radius:0;border:none;box-shadow:none;width:100vw;height:100vh}
+  .canvas-wrap:fullscreen canvas,.canvas-wrap:-webkit-full-screen canvas,.canvas-wrap.fs-fallback canvas{height:100%}
+  .is-fs-mode header,.is-fs-mode .sheet-title,.is-fs-mode .intent,.is-fs-mode .route,.is-fs-mode .timer-row,.is-fs-mode .controls,.is-fs-mode .sound,.is-fs-mode .quick,.is-fs-mode .quote,.is-fs-mode .stats,.is-fs-mode .windowed-wrap{display:none !important}
+  .fs-btn{display:none !important}
+  /* windowed sheet + history (dark, Globetrans split) */
+  .windowed-wrap{display:flex;gap:12px;margin:12px 20px;flex:1;min-height:0}
+  .content-area{display:flex;gap:12px;flex:1;min-height:0}
+  .sheet-wrap{flex:0 0 36%;min-width:300px;max-width:380px;background:var(--surface);border:1px solid var(--outline);border-radius:16px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.35)}
+  .sheet-head{padding:14px 14px 10px;border-bottom:1px solid var(--outline);display:flex;justify-content:space-between;align-items:center}
+  .sheet-head h2{margin:0;font-size:13px;font-weight:800;color:var(--accent);letter-spacing:0.8px}
+  .sheet-head span{color:var(--muted);font-size:11px;cursor:pointer}
+  .sheet-tabs{display:flex;gap:8px;padding:10px 14px;border-bottom:1px solid var(--outline)}
+  .sheet-tab{flex:1;padding:6px 10px;border-radius:999px;border:1px solid var(--outline);background:var(--surface2);color:var(--muted);font-size:12px;font-weight:700;cursor:pointer;text-align:center;transition:background .15s, color .15s}
+  .sheet-tab.active{background:var(--accent);color:#00140e;border-color:var(--accent);box-shadow:0 2px 6px rgba(0,0,0,0.30)}
+  .sheet-intent{padding:10px 14px;border-bottom:1px solid var(--outline)}
+  .sheet-intent label{color:var(--muted);font-weight:700;font-size:11px;display:block;margin-bottom:6px}
+  .sheet-intent input{width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.10);backdrop-filter:blur(16px) saturate(150%);-webkit-backdrop-filter:blur(16px);color:var(--text);border-radius:10px;padding:7px 10px;outline:none;font-size:12px}
+  .sheet-intent input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(16,185,129,0.22)}
+  .sheet-list{flex:1;overflow:auto;padding:8px 8px 0;min-height:160px}
+  .sheet-row{padding:10px 10px;border:1px solid var(--outline);background:var(--surface2);border-radius:12px;margin-bottom:8px;cursor:pointer;transition:border-color .15s, background .15s}
+  .sheet-row:hover{border-color:rgba(0,230,154,0.35)}
+  .sheet-row.active{border-color:var(--accent);background:rgba(0,230,154,0.08)}
+  .sheet-row-top{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:700;color:var(--text)}
+  .sheet-row-sub{font-size:11px;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sheet-badge{padding:3px 8px;border-radius:999px;font-size:10px;font-weight:800;letter-spacing:0.4px;white-space:nowrap}
+  .sheet-badge.transit{background:var(--accent);color:#00140e}
+  .sheet-badge.delivered{background:var(--surface);color:var(--muted);border:1px solid var(--outline)}
+  .sheet-empty{padding:28px 14px;text-align:center;color:var(--muted);font-style:italic;font-size:12px}
+  .sheet-footer{padding:12px 12px;border-top:1px solid rgba(255,255,255,0.08);display:flex;flex-direction:column;gap:10px;background:rgba(28,30,34,0.62);backdrop-filter:blur(12px) saturate(180%);-webkit-backdrop-filter:blur(12px) saturate(180%);border:1px solid rgba(255,255,255,0.10);border-top:1px solid rgba(255,255,255,0.10);box-shadow:0 12px 40px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.06)}
+  .sheet-footer .timer-row{margin:0}
+  .sheet-footer .time-card{flex:0 0 140px}
+  .sheet-footer .time{font-size:28px}
+  .sheet-footer .controls{margin:0;justify-content:center}
+  .sheet-footer .sound{margin:0}
+  .sheet-footer .quick{margin:0}
+  .sheet-footer .quote{margin:6px 0 0}
+  .hud-main{display:flex;align-items:center;gap:12px;padding:12px 14px;background:rgba(28,30,34,0.72);backdrop-filter:blur(12px) saturate(180%);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.10);border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.06)}
+  .hud-main .hud-time{font-family:ui-monospace,Consolas,monospace;font-size:22px;font-weight:800;color:var(--accent);letter-spacing:0.5px;min-width:78px;text-align:center;font-variant-numeric:tabular-nums}
+  .hud-main .hud-progress{flex:1;display:flex;flex-direction:column;gap:6px}
+  .hud-main .hud-progress .bar{height:6px}
+  .hud-main .hud-meta{display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .hud-main .am-icon.small{width:32px;height:32px}
+  .sheet-map-wrap{flex:1;position:relative;background:var(--surface);border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);box-shadow:0 20px 40px rgba(0,0,0,0.45), 0 8px 24px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06);min-height:0;display:flex;flex-direction:column;align-self:stretch}
+  .sheet-map-wrap .canvas-wrap{margin:0;flex:1;border:none;box-shadow:none;border-radius:0;height:auto}
+  .sheet-detail{position:absolute;inset:8px;background:var(--surface);border:1px solid var(--outline);border-radius:12px;padding:12px;box-shadow:0 16px 32px rgba(0,0,0,0.45);z-index:5;display:flex;flex-direction:column;gap:8px}
+  .sheet-detail h3{margin:0;font-size:13px;font-weight:800;color:var(--text)}
+  .sheet-detail-bar{height:3px;background:var(--surface2);border-radius:999px;overflow:hidden}
+  .sheet-detail-fill{height:100%;background:var(--accent);border-radius:999px;transition:width .25s}
+  .sheet-detail-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;font-size:11px}
+  .sheet-detail-grid b{color:var(--text);display:block;font-size:11px}
+  .sheet-detail-grid span{color:var(--muted);font-size:11px}
+  @media(max-width:720px){.windowed-wrap{flex-direction:column}.content-area{flex-direction:column;margin:0 12px}.sheet-wrap{max-width:none;flex:0 0 auto;max-height:42vh}.sheet-map-wrap{min-height:42vh}}
+  /* Apple Music / iOS glass — floating capsules (replaces YouTube bar) */
+  .yt-wrap,.yt-top,.yt-bar,.yt-ctrl,.yt-time{display:none !important} /* legacy YouTube classes hidden */
+  .am-dock{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);display:flex;flex-direction:column;gap:10px;align-items:center;pointer-events:none;transition:opacity .25s ease, transform .25s ease;z-index:6}
+  .am-dock.hidden{opacity:0;transform:translate(-50%,10px);pointer-events:none}
+  .am-scrub-pill{pointer-events:none;width:min(520px,72vw);height:26px;padding:0 14px;background:rgba(28,30,34,0.72);backdrop-filter:blur(24px) saturate(180%);-webkit-backdrop-filter:blur(24px) saturate(180%);border:1px solid rgba(255,255,255,0.10);border-radius:999px;box-shadow:0 12px 40px rgba(0,0,0,0.45), 0 1px 0 rgba(255,255,255,0.06) inset;display:flex;align-items:center;position:relative;cursor:default;overflow:hidden}
+  .am-scrub-pill .yt-track{position:relative;flex:1;height:3px;background:rgba(255,255,255,0.18);border-radius:999px;overflow:hidden}
+  .am-scrub-pill .yt-fill{position:absolute;left:0;top:0;bottom:0;background:var(--accent);border-radius:999px;pointer-events:none;transition:width .25s ease}
+  .am-scrub-pill .yt-thumb,.am-scrub-pill .yt-tip{display:none !important}
+  .am-controls{position:absolute;right:16px;top:50%;transform:translateY(-50%);pointer-events:auto;display:flex;flex-direction:column;align-items:center;gap:10px;padding:10px 8px;background:rgba(28,30,34,0.72);backdrop-filter:blur(24px) saturate(180%);-webkit-backdrop-filter:blur(24px) saturate(180%);border:1px solid rgba(255,255,255,0.10);border-radius:22px;box-shadow:0 12px 40px rgba(0,0,0,0.45), 0 1px 0 rgba(255,255,255,0.06) inset;z-index:6;transition:opacity .25s ease, transform .25s ease}
+  .am-controls.hidden{opacity:0;transform:translate(12px,-50%);pointer-events:none}
+  .am-icon{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.08);color:var(--text);cursor:pointer;transition:background .15s, transform .12s, border-color .15s, box-shadow .15s;flex-shrink:0}
+  .am-icon:hover{background:rgba(255,255,255,0.14);transform:scale(1.04);border-color:rgba(255,255,255,0.14)}
+  .am-icon:active{transform:scale(0.96)}
+  .am-icon.primary{width:44px;height:44px;background:var(--accent);border-color:var(--accent);color:#00140e;box-shadow:0 4px 16px rgba(0,0,0,0.25)}
+  .am-icon.small{width:36px;height:36px}
+  .am-divider{width:20px;height:1px;background:rgba(255,255,255,0.08);margin:2px 0;flex-shrink:0}
+  .am-time{font-family:ui-monospace,Consolas,monospace;font-size:11px;font-weight:700;color:rgba(255,255,255,0.88);min-width:auto;text-align:center;font-variant-numeric:tabular-nums;letter-spacing:0.2px;white-space:nowrap}
+  .am-top{position:absolute;top:14px;left:50%;transform:translateX(-50%);pointer-events:none;transition:opacity .25s, transform .25s;z-index:6}
+  .am-top.hidden{opacity:0;transform:translate(-50%,-6px);pointer-events:none}
+  .am-top-pill{pointer-events:auto;background:rgba(28,30,34,0.72);backdrop-filter:blur(24px) saturate(180%);-webkit-backdrop-filter:blur(24px) saturate(180%);border:1px solid rgba(255,255,255,0.10);border-radius:999px;padding:7px 14px;display:flex;gap:10px;align-items:center;font-size:12px;color:var(--text);box-shadow:0 12px 40px rgba(0,0,0,0.45), 0 1px 0 rgba(255,255,255,0.06) inset;max-width:min(560px,92vw)}
+  .am-top-pill b{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px}
+  .am-top-pill span{white-space:nowrap}
+  .am-fs{position:absolute;right:14px;bottom:14px;z-index:5;width:36px;height:36px;border-radius:50%;background:rgba(28,30,34,0.68);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,0.10);color:rgba(255,255,255,0.92);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(0,0,0,0.35);transition:background .15s, transform .12s}
+  .am-fs:hover{background:rgba(255,255,255,0.14);transform:scale(1.05)}
+  .am-fs:active{transform:scale(0.95)}
+  .canvas-wrap:fullscreen .am-fs,.canvas-wrap:-webkit-full-screen .am-fs,.canvas-wrap.fs-fallback .am-fs{opacity:0;pointer-events:none}
+  .log-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:30;display:flex;align-items:center;justify-content:center;padding:16px}
+  .log-card{width:min(640px,92vw);max-height:72vh;background:rgba(28,30,34,0.88);backdrop-filter:blur(24px) saturate(180%);-webkit-backdrop-filter:blur(24px) saturate(180%);border:1px solid rgba(255,255,255,0.10);border-radius:16px;box-shadow:0 24px 48px rgba(0,0,0,0.55), 0 1px 0 rgba(255,255,255,0.06) inset;display:flex;flex-direction:column;overflow:hidden}
+  .log-head{padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;justify-content:space-between;align-items:center}
+  .log-head h2{margin:0;font-size:14px;font-weight:800;color:var(--accent);letter-spacing:0.8px}
+  .log-stats{font-size:11px;color:var(--muted)}
+  .log-actions{display:flex;gap:8px}
+  .log-body{flex:1;overflow:auto}
+  .log-table{width:100%;border-collapse:collapse;font-size:12px}
+  .log-table th{position:sticky;top:0;background:rgba(20,23,27,0.96);backdrop-filter:blur(12px);color:var(--muted);font-weight:700;font-size:10px;letter-spacing:0.6px;text-transform:uppercase;padding:8px 10px;text-align:left;border-bottom:1px solid rgba(255,255,255,0.06);white-space:nowrap}
+  .log-table td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,0.05);vertical-align:top}
+  .log-table tr:hover td{background:rgba(255,255,255,0.04)}
+  .log-intent{max-width:280px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
+  .log-empty{padding:32px 16px;text-align:center;color:var(--muted);font-style:italic;font-size:13px}
+  .log-foot{padding:10px 16px;border-top:1px solid rgba(255,255,255,0.08);display:flex;justify-content:space-between;align-items:center}
+  .log-foot button{padding:6px 12px;border-radius:8px;border:1px solid var(--outline);background:var(--surface);color:var(--text);cursor:pointer;font-size:12px;font-weight:700}
+  .log-foot button.danger{background:rgba(204,51,51,0.12);border-color:rgba(204,51,51,0.3);color:#ff6b6b}
+  .log-foot button.primary-log{background:var(--accent);color:#00140e;border-color:var(--accent)}
+  @media(max-width:560px){.am-scrub-pill{width:78vw}.am-controls{gap:6px;padding:6px 8px}.am-time{min-width:78px;font-size:10.5px}.am-top-pill{padding:6px 10px;font-size:11px}.log-table{font-size:11px}.log-intent{max-width:160px}}
+  .intent{margin:10px 20px;display:flex;gap:10px;align-items:center;background:var(--surface);border:1px solid var(--outline);border-radius:12px;padding:10px 14px}
+  .intent label{color:var(--muted);font-weight:700;font-size:12px;min-width:44px}
+  .intent input{flex:1;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.10);backdrop-filter:blur(16px) saturate(150%);-webkit-backdrop-filter:blur(16px);color:var(--text);border-radius:10px;padding:7px 10px;outline:none}
+  .intent input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(16,185,129,0.22)}
+  .route{margin:0 20px 10px;display:flex;gap:10px;align-items:center;background:var(--surface);border:1px solid var(--outline);border-radius:12px;padding:10px 14px}
+  .route select{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.10);backdrop-filter:blur(16px) saturate(150%);-webkit-backdrop-filter:blur(16px);color:var(--text);border-radius:8px;padding:6px 10px}
+  .timer-row{display:flex;gap:12px;margin:10px 20px;align-items:stretch}
+  .time-card{flex:0 0 240px;background:var(--surface);border:1px solid rgba(255,255,255,0.08);border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px;box-shadow:0 8px 24px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06)}
+  .time{font-family:ui-monospace,Consolas,monospace;font-size:38px;font-weight:800;color:var(--accent);letter-spacing:1px}
+  .cap{color:var(--muted);font-size:11px;margin-top:2px}
+  .progress-card{flex:1;background:var(--surface);border:1px solid var(--outline);border-radius:12px;padding:14px;display:flex;flex-direction:column;justify-content:center;gap:8px;position:relative}
+  .bar{height:6px;background:var(--surface2);border-radius:999px;overflow:hidden;border:1px solid var(--outline);position:relative}
+  .fill{height:100%;background:linear-gradient(90deg, var(--accent), var(--accent2));width:0%;border-radius:999px;box-shadow:0 2px 6px rgba(0,0,0,0.25)}
+  .pct{font-family:ui-monospace,Consolas,monospace;font-size:11px;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums;letter-spacing:0.2px}
+  .controls{display:flex;gap:12px;justify-content:center;margin:14px 20px}
+  .btn{padding:11px 18px;border-radius:12px;border:1px solid var(--outline);background:var(--surface);color:var(--text);cursor:pointer;font-weight:700;font-size:13px;transition:transform 0.12s}
+  .btn:active{transform:scale(0.97)}
+  .btn.primary{background:var(--accent);color:#00140e;border-color:var(--accent);box-shadow:0 4px 12px rgba(0,0,0,0.35)}
+  .btn:disabled{opacity:0.5;cursor:not-allowed}
+  .sound{display:flex;gap:10px;align-items:center;justify-content:center;margin:6px 20px;color:var(--muted);font-size:12px;background:var(--surface);border:1px solid var(--outline);border-radius:10px;padding:8px 12px}
+  .sound select{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.10);backdrop-filter:blur(16px) saturate(150%);-webkit-backdrop-filter:blur(16px);color:var(--text);border-radius:6px;padding:4px 8px}
+  .quick{display:flex;gap:8px;justify-content:center;margin:6px 20px 10px}
+  .pill{padding:6px 14px;border-radius:999px;background:var(--surface);border:1px solid var(--outline);color:var(--text);cursor:pointer;font-size:12px;font-weight:600}
+  .pill.active{background:var(--accent);color:#00140e;border-color:var(--accent);box-shadow:0 2px 6px rgba(0,0,0,0.30)}
+  .quote{text-align:center;color:var(--muted);font-style:italic;font-size:12px;margin:12px 20px 16px;opacity:0.9}
+  .stats{display:flex;justify-content:space-between;align-items:center;margin:6px 14px 10px;color:var(--muted);font-size:11px}
+  .stats button{padding:5px 10px;border-radius:8px;background:var(--surface);border:1px solid var(--outline);color:var(--accent);cursor:pointer}
+  .top-actions{position:absolute;top:12px;right:14px;display:flex;gap:8px}
+  .top-actions button{padding:6px 12px;border-radius:8px;background:var(--surface);border:1px solid var(--outline);color:var(--text);cursor:pointer;font-size:12px;font-weight:700}
+  /* cover — Are you ready to hit the road? → Let's roll */
+  .cover-overlay{position:fixed;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(7,10,14,0.78);backdrop-filter:blur(18px) saturate(1.15);-webkit-backdrop-filter:blur(18px)}
+  .cover-card{width:min(440px,92vw);background:rgba(15,20,25,0.96);border:1px solid rgba(30,42,51,0.92);border-radius:18px;padding:22px 20px 18px;box-shadow:0 24px 48px rgba(0,0,0,0.55),0 1px 0 rgba(255,255,255,0.06) inset;display:flex;flex-direction:column;gap:14px;text-align:center}
+  .cover-eyebrow{color:var(--accent);font-size:11px;letter-spacing:1.2px;font-weight:800}
+  .cover-title{font-size:22px;font-weight:800;color:var(--text);line-height:1.2;letter-spacing:0.2px}
+  .cover-sub{color:var(--muted);font-size:13px;line-height:1.45}
+  .cover-intent{text-align:left;background:var(--surface);border:1px solid var(--outline);border-radius:12px;padding:10px 12px}
+  .cover-intent label{color:var(--muted);font-weight:700;font-size:11px;display:block;margin-bottom:6px}
+  .cover-intent input{width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.10);backdrop-filter:blur(16px) saturate(150%);-webkit-backdrop-filter:blur(16px);color:var(--text);border-radius:10px;padding:8px 10px;outline:none;font-size:13px}
+  .cover-intent input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(16,185,129,0.22)}
+  .cover-cta{margin-top:2px;display:flex;gap:10px;justify-content:center}
+  .cover-cta .btn{flex:1;max-width:280px;justify-content:center;display:inline-flex;align-items:center;gap:8px;padding:12px 18px;font-size:14px}
+  .cover-hint{color:var(--muted);font-size:11px;opacity:0.9}
+  .sheet-row{position:relative}
+  .sheet-row-del{position:absolute;top:8px;right:8px;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(204,51,51,0.12);border:1px solid rgba(204,51,51,0.25);color:#ff6b6b;cursor:pointer;font-size:12px;line-height:1}
+  .sheet-row-del:hover{background:rgba(204,51,51,0.18)}
+  @media (max-width:720px){.timer-row{flex-direction:column}.time-card{flex:1}.hud-top,.hud-bottom{min-width:92%}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="module">
+import React, {useEffect, useRef, useState, useMemo} from "react"
+import {createRoot} from "react-dom/client"
+import {motion, AnimatePresence} from "framer-motion"
+import gsap from "gsap"
+import htm from "htm"
+import * as PIXI from "pixi.js"
+import lottie from "lottie-web"
+const html = htm.bind(React.createElement)
+
+// --- Apple Music crisp SVG icons (inline, no dep, 1.5px hairline) ---
+const IconPlay = ()=> html`<svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M4.2 2.8 L11.2 7 L4.2 11.2 Z" fill="currentColor" stroke="currentColor" stroke-width="0.7" stroke-linejoin="round" stroke-linecap="round"/></svg>`
+const IconPause = ()=> html`<svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><rect x="3.2" y="2.6" width="2.6" height="8.8" rx="0.9" fill="currentColor"/><rect x="8.2" y="2.6" width="2.6" height="8.8" rx="0.9" fill="currentColor"/></svg>`
+const IconReset = ()=> html`<svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M13.2 8 A5.2 5.2 0 1 1 7.9 2.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M13.2 2.9 V6.1 H10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`
+const IconExit = ()=> html`<svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M2 5.4V2H5.4" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round"/><path d="M8.6 2H12V5.4" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 8.6V12H8.6" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.4 12H2V8.6" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round"/></svg>`
+const IconExpand = ()=> html`<svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M5.2 2H2V5.2" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round"/><path d="M8.8 2H12V5.2" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round"/><path d="M8.8 12H12V8.8" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 8.8V12H5.2" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round"/></svg>`
+
+const ROUTES = [
+  ["Coastal Hop",25,"Quick sprint — one focused stretch"],
+  ["Desert Stretch",50,"Deep work block — stay with it"],
+  ["Mountain Pass",90,"Long haul — settle in"],
+  ["Cross-Country",120,"Marathon — the scenic way"],
+]
+const SCENERY_SPEED = 18
+
+function useCurve(seed){
+  return useMemo(()=>{
+    let s = seed
+    const rnd = ()=> (s = (s*16807)%2147483647, (s-1)/2147483646)
+    return [42+rnd()*26, 14+rnd()*12, 0.028+rnd()*0.02, 0.11+rnd()*0.06, rnd()*6.28, rnd()*6.28]
+  },[seed])
+}
+
+function App(){
+  const [intent,setIntent]=useState("")
+  const [routeName,setRouteName]=useState(ROUTES[0][0])
+  const [routeMin,setRouteMin]=useState(ROUTES[0][1])
+  const [remaining,setRemaining]=useState(ROUTES[0][1]*60)
+  const [total,setTotal]=useState(ROUTES[0][1]*60)
+  const [isRunning,setIsRunning]=useState(false)
+  const [isPaused,setIsPaused]=useState(false)
+  const [isFullscreen,setIsFullscreen]=useState(false)
+  const [controlsVisible,setControlsVisible]=useState(true)
+  const [seed,setSeed]=useState(Math.random())
+  const [dist,setDist]=useState(0)
+  const distRef=useRef(0)
+  const distRenderRef=useRef(0)
+  const displayDistRef=useRef(0)
+  const lastUIDistRef=useRef(0)
+  const [showDone,setShowDone]=useState(false)
+  const [doneInfo,setDoneInfo]=useState(null)
+  const [showLog,setShowLog]=useState(false)
+  const [logRows,setLogRows]=useState([])
+  const [noiseKind,setNoiseKind]=useState("brown")
+  const [humOn,setHumOn]=useState(true)
+  const [vol,setVol]=useState(0.12)
+  const [sheetTab,setSheetTab]=useState("onroad")
+  const [detailItem,setDetailItem]=useState(null)
+  const [showCover,setShowCover]=useState(()=>{ try{ return !sessionStorage.getItem("rf_cover_dismissed")}catch{ return true }})
+  const dismissCover=()=>{ try{ sessionStorage.setItem("rf_cover_dismissed","1")}catch{}; setShowCover(false) }
+  // persistence — rf_state across refresh (P0)
+  useEffect(()=>{
+    try{
+      const raw=localStorage.getItem("rf_state")
+      if(!raw) return
+      const s=JSON.parse(raw)
+      if(Date.now() - (s.ts||0) > 24*3600*1000) return
+      if(s.intent!=null) setIntent(s.intent)
+      if(s.routeName) setRouteName(s.routeName)
+      if(s.routeMin) setRouteMin(s.routeMin)
+      if(s.total) setTotal(s.total)
+      if(s.remaining!=null) setRemaining(s.remaining)
+      if(s.vol!=null) setVol(s.vol)
+      if(s.noiseKind) setNoiseKind(s.noiseKind)
+      if(typeof s.humOn==="boolean") setHumOn(s.humOn)
+      if(s.seed!=null) setSeed(s.seed)
+      if(s.isRunning){ setIsRunning(true); if(s.isPaused) setIsPaused(true); startedAtRef.current = s.startedAt || new Date().toISOString(); t0Ref.current = performance.now() - ((s.total - (s.remaining||0))*1000) - (s.pausedRef||0); pausedRef.current = s.pausedRef||0; if(s.isPaused) pausedAt.current = performance.now() }
+    }catch{}
+  },[])
+  useEffect(()=>{
+    try{
+      const data={ts:Date.now(), intent, routeName, routeMin, total, remaining, vol, noiseKind, humOn, seed, isRunning, isPaused, startedAt: startedAtRef.current, pausedRef: pausedRef.current}
+      localStorage.setItem("rf_state", JSON.stringify(data))
+    }catch{}
+  },[intent, routeName, routeMin, total, remaining, vol, noiseKind, humOn, seed, isRunning, isPaused])
+  useEffect(()=>{ if(!isRunning && !isPaused && remaining===total){ try{ localStorage.removeItem("rf_state") }catch{} } },[isRunning, isPaused, remaining, total])
+  useEffect(()=>{ try{ if("Notification" in window && Notification.permission==="default") Notification.requestPermission() }catch{} },[])
+  const prevKindRef=useRef(noiseKind)
+  const prevHumRef=useRef(humOn)
+  const canvasRef=useRef(null)
+  const canvasWrapRef=useRef(null)
+  const hideTimerRef=useRef(null)
+  const audioRef=useRef(null)
+  const isRunningRef=useRef(false)
+  const isPausedRef=useRef(false)
+  const idlePhaseRef=useRef(0)
+  const pausedOffRef=useRef(0)
+  const startedAtRef=useRef(null)
+  const progress = total? (total-remaining)/total : 0
+  const params=useCurve(seed)
+  const roadCenter=(d)=> params[0]*Math.sin(d*params[2]+params[4]) + params[1]*Math.sin(d*params[3]+params[5])
+  const persp=(t)=> 1 - Math.pow(1-t,1.65)
+
+  // audio — seamless live swap while running (A)
+  useEffect(()=>{
+    let ctx, src, gain
+    const init = ()=>{
+      if(audioRef.current) return
+      try{
+        ctx = new (window.AudioContext||window.webkitAudioContext)()
+        const bufferSize=ctx.sampleRate*4
+        const buf=ctx.createBuffer(2, bufferSize, ctx.sampleRate)
+        for(let ch=0; ch<2; ch++){
+          const data=buf.getChannelData(ch)
+          let b0,b1,b2,b3,b4,b5,b6
+          b0=b1=b2=b3=b4=b5=b6=0
+          let brown=0
+          for(let i=0;i<bufferSize;i++){
+            const white=Math.random()*2-1
+            b0=0.99886*b0+white*0.0555179
+            b1=0.99332*b1+white*0.0750759
+            b2=0.96900*b2+white*0.153852
+            b3=0.86650*b3+white*0.3104856
+            b4=0.55000*b4+white*0.5329522
+            b5=-0.7616*b5-white*0.016898
+            const pink=(b0+b1+b2+b3+b4+b5+b6+white*0.5362)*0.11
+            b6=white*0.115926
+            brown = brown + white*0.02
+            brown *= 0.998
+            const kind=noiseKind
+            let v = kind==="white"? white : kind==="pink"? pink : kind==="brown"? brown*3.5 : pink*0.8 + (Math.random()<0.002? (Math.random()*0.5):0)
+            const t=i/ctx.sampleRate
+            const drone = humOn? (0.35*Math.sin(2*Math.PI*55*t)+0.18*Math.sin(2*Math.PI*110*t))*0.6 : 0
+            data[i]= (v*0.45 + drone*0.5) * vol * 0.9
+          }
+        }
+        src=ctx.createBufferSource(); src.buffer=buf; src.loop=true
+        gain=ctx.createGain(); gain.gain.value=1
+        src.connect(gain).connect(ctx.destination)
+        audioRef.current={ctx,src,gain}
+      }catch(e){ console.log("audio fail",e) }
+    }
+    const start = ()=>{
+      if(!audioRef.current) init()
+      if(audioRef.current && audioRef.current.ctx.state==="suspended") audioRef.current.ctx.resume()
+      try{ audioRef.current.src.start(0) }catch{}
+    }
+    const stop = ()=>{ try{ const a=audioRef.current; if(a){ a.src.stop(); try{a.ctx.close()}catch{} } audioRef.current=null }catch{} }
+    const kindChanged = noiseKind!==prevKindRef.current
+    const humChanged = humOn!==prevHumRef.current
+    const needsRebuild = isRunning && !isPaused && audioRef.current && (kindChanged || humChanged)
+    if(needsRebuild){
+      stop()
+      prevKindRef.current=noiseKind
+      prevHumRef.current=humOn
+    }
+    // vol live without rebuild
+    if(isRunning && !isPaused && audioRef.current && audioRef.current.gain){
+      try{ audioRef.current.gain.gain.setValueAtTime(vol, audioRef.current.ctx.currentTime) }catch{}
+      if(!kindChanged && !humChanged) return ()=>{}
+    }
+    if(isRunning && !isPaused && !audioRef.current){
+      prevKindRef.current=noiseKind
+      prevHumRef.current=humOn
+    }
+    if(isRunning && !isPaused){ start() } else { stop(); prevKindRef.current=noiseKind; prevHumRef.current=humOn }
+    return ()=>{}
+  },[isRunning,isPaused,noiseKind,humOn,vol])
+
+  // timer + dist — unified RAF single clock (no setInterval drift, 120Hz safe)
+  const t0Ref = React.useRef(performance.now())
+  const pausedRef = React.useRef(0)
+  const pausedAt = React.useRef(null)
+  useEffect(()=>{
+    if(isRunning && !isPaused){
+      if(pausedAt.current) { pausedRef.current += performance.now() - pausedAt.current; pausedAt.current=null }
+    } else if(isPaused){
+      pausedAt.current = performance.now()
+    }
+  },[isPaused, isRunning])
+  // desync intentional: 12% ease tail = end indication (88-100% coast to town, not lag)
+  const easeOutCubic = t=> 1 - Math.pow(1 - t, 3)
+  useEffect(()=>{
+    let raf
+    const tick=()=>{
+      if(isRunning && !isPaused){
+        const elapsed=(performance.now() - t0Ref.current - pausedRef.current)/1000
+        const raw=Math.min(elapsed*SCENERY_SPEED*0.35, total*SCENERY_SPEED*0.35)
+        const p=Math.min(elapsed/total, 1)
+        const eased = p > 0.88 ? total*SCENERY_SPEED*0.35 * (0.88 + 0.12 * easeOutCubic((p - 0.88) / 0.12)) : raw
+        distRef.current=eased
+        distRenderRef.current += (distRef.current - distRenderRef.current)*0.14
+        const now=performance.now()
+        if(now - lastUIDistRef.current > 200){
+          lastUIDistRef.current=now
+          displayDistRef.current=distRenderRef.current
+          setDist(displayDistRef.current)
+        }
+        const nextRemaining = Math.max(0, total - Math.floor(elapsed))
+        if(nextRemaining !== remaining){
+          if(nextRemaining <= 0){ setRemaining(0); setIsRunning(false); onFinish(); } else { setRemaining(nextRemaining) }
+        } else if(elapsed >= total){
+          if(remaining !== 0){ setRemaining(0); setIsRunning(false); onFinish() }
+        }
+      }
+      raf=requestAnimationFrame(tick)
+    }
+    raf=requestAnimationFrame(tick)
+    return ()=>cancelAnimationFrame(raf)
+  },[isRunning, isPaused, total, remaining])
+  // keep t0 in sync on start
+  useEffect(()=>{
+    if(isRunning && !isPaused){
+      if(remaining===total) { t0Ref.current=performance.now(); pausedRef.current=0; distRef.current=0; distRenderRef.current=0; displayDistRef.current=0; lastUIDistRef.current=performance.now(); setDist(0) }
+    }
+  },[isRunning])
+  // sync refs for draw loop (phase gate) — avoids stale closure on isRunning/isPaused
+  useEffect(()=>{ isRunningRef.current=isRunning },[isRunning])
+  useEffect(()=>{ 
+    isPausedRef.current=isPaused
+    if(isPaused){
+      const pat=28 // 14+14 match dash+gap at dpr1
+      pausedOffRef.current=(distRenderRef.current*0.18)%pat
+    }
+  },[isPaused])
+  // sync isFullscreen — canvasWrap is the fullscreen element (YouTube style), not documentElement
+  useEffect(()=>{
+    const getFS = ()=> document.fullscreenElement || document.webkitFullscreenElement || null
+    const handleChange = () => {
+      const el = getFS()
+      const wrap = canvasWrapRef.current
+      // if we used fallback class, keep state true; otherwise match actual fullscreen element
+      const isFS = wrap ? (el === wrap || wrap.classList.contains("fs-fallback")) : !!el
+      setIsFullscreen(isFS)
+      if(isFS) setControlsVisible(true)
+    }
+    handleChange()
+    document.addEventListener("fullscreenchange", handleChange)
+    document.addEventListener("webkitfullscreenchange", handleChange)
+    return () => {
+      document.removeEventListener("fullscreenchange", handleChange)
+      document.removeEventListener("webkitfullscreenchange", handleChange)
+    }
+  }, [])
+
+  // helpers: enter/exit fullscreen on canvasWrap
+  const enterMapFullscreen = ()=>{
+    const wrap = canvasWrapRef.current
+    if(!wrap) return
+    const req = wrap.requestFullscreen || wrap.webkitRequestFullscreen
+    if(req){
+      req.call(wrap).catch(()=>{
+        // fallback to fixed-position fullscreen when API blocked (e.g. iOS, iframe)
+        wrap.classList.add("fs-fallback")
+        setIsFullscreen(true)
+        setControlsVisible(true)
+      })
+    } else {
+      wrap.classList.add("fs-fallback")
+      setIsFullscreen(true)
+      setControlsVisible(true)
+    }
+  }
+  const exitMapFullscreen = ()=>{
+    const wrap = canvasWrapRef.current
+    if(wrap && wrap.classList.contains("fs-fallback")){
+      wrap.classList.remove("fs-fallback")
+      setIsFullscreen(false)
+      return
+    }
+    const exit = document.exitFullscreen || document.webkitExitFullscreen
+    if(document.fullscreenElement || document.webkitFullscreenElement) exit?.call(document).catch(()=>{})
+    else setIsFullscreen(false)
+  }
+
+  // autohide controls after 3s idle (only when fullscreen + running + not paused) — read-only bar
+  const resetHideTimer = ()=>{
+    if(!isFullscreen) return
+    setControlsVisible(true)
+    if(hideTimerRef.current) clearTimeout(hideTimerRef.current)
+    if(isRunning && !isPaused){
+      hideTimerRef.current = setTimeout(()=> setControlsVisible(false), 3000)
+    }
+  }
+  useEffect(()=>{
+    if(isFullscreen && isRunning && !isPaused){
+      resetHideTimer()
+    } else if(isFullscreen){
+      setControlsVisible(true)
+      if(hideTimerRef.current) clearTimeout(hideTimerRef.current)
+    }
+    return ()=>{ if(hideTimerRef.current) clearTimeout(hideTimerRef.current) }
+  },[isFullscreen, isRunning, isPaused])
+  useEffect(()=>{
+    const onKey = (e)=>{
+      const tag = document.activeElement?.tagName
+      const inInput = tag==="INPUT"||tag==="SELECT"||tag==="TEXTAREA"
+      if(e.key==="Escape" && isFullscreen) { exitMapFullscreen(); return }
+      if(inInput) return
+      if(e.key==="f" || e.key==="F"){ e.preventDefault(); if(isFullscreen) exitMapFullscreen(); else enterMapFullscreen(); return }
+      if(e.code==="Space" || e.key===" "){ e.preventDefault(); if(!isRunning) handleHitRoad(); else handlePauseToggle(); return }
+      if(e.key==="r" || e.key==="R"){ e.preventDefault(); handleReset(); return }
+      if(e.key==="m" || e.key==="M"){ e.preventDefault(); setHumOn(v=>!v); return }
+    }
+    document.addEventListener("keydown", onKey)
+    return ()=> document.removeEventListener("keydown", onKey)
+  },[isFullscreen, isRunning, isPaused, humOn])
+
+  // scrubber: read-only display (no seek)
+
+  // Trip Log helpers
+  const loadLogs = ()=>{
+    try{
+      const arr=JSON.parse(localStorage.getItem("rf_sessions")||"[]")
+      const rev=arr.slice().reverse()
+      setLogRows(rev)
+      return rev
+    }catch{ setLogRows([]); return [] }
+  }
+  useEffect(()=>{ if(showLog) loadLogs() },[showLog])
+  useEffect(()=>{ loadLogs() },[])
+  const clearLogs = ()=>{
+    if(!confirm("Clear all trip history?")) return
+    localStorage.removeItem("rf_sessions")
+    setLogRows([])
+  }
+  const deleteTransit = (finished_at)=>{
+    if(!confirm("Delete this in-transit trip?")) return
+    try{
+      const arr=JSON.parse(localStorage.getItem("rf_sessions")||"[]")
+      const nxt=arr.filter(r=> String(r.finished_at)!==String(finished_at))
+      localStorage.setItem("rf_sessions", JSON.stringify(nxt))
+      loadLogs()
+      if(detailItem && String(detailItem.finished_at)===String(finished_at)) setDetailItem(null)
+    }catch{}
+  }
+  const exportLogs = ()=>{
+    const rows=logRows.length? logRows : JSON.parse(localStorage.getItem("rf_sessions")||"[]").slice().reverse()
+    if(!rows.length) return
+    const header="| Date | Route | Min | Intent | Done |\n|---|---|---|---|---|\n"
+    const body=rows.map(r=>{
+      const d=(r.finished_at||"").slice(0,16).replace("T"," ")
+      const intent=(r.intent||"").replace(/\|/g,"/").slice(0,60)
+      const done=r.completed?"✓":"—"
+      return `| ${d} | ${r.route||""} | ${r.duration_min||0} | ${intent} | ${done} |`
+    }).join("\n")
+    const md=header+body+"\n"
+    const blob=new Blob([md],{type:"text/markdown"})
+    const url=URL.createObjectURL(blob)
+    const a=document.createElement("a"); a.href=url; a.download=`roadtrip-log-${new Date().toISOString().slice(0,10)}.md`; a.click(); URL.revokeObjectURL(url)
+  }
+
+  // draw
+  useEffect(()=>{
+    const canvas=canvasRef.current
+    if(!canvas) return
+    const ctx=canvas.getContext("2d")
+    let raf
+    const draw=()=>{
+      const dpr=window.devicePixelRatio||1
+      const w=canvas.clientWidth*dpr, h=canvas.clientHeight*dpr
+      if(canvas.width!==w||canvas.height!==h){ canvas.width=w; canvas.height=h }
+      const W=w,H=h, horizon=H*0.28, d=distRenderRef.current
+      // idle drift only — cruise tied to dist, pause frozen
+      let idlePhase = idlePhaseRef.current
+      if(!isPausedRef.current && !isRunningRef.current){
+        idlePhase=(idlePhase+0.016*0.02*SCENERY_SPEED)%1
+        idlePhaseRef.current=idlePhase
+      }
+      ctx.clearRect(0,0,W,H)
+      const grad=ctx.createLinearGradient(0,0,0,horizon)
+      grad.addColorStop(0,"#060a0e"); grad.addColorStop(1,"#0e1e18")
+      ctx.fillStyle=grad; ctx.fillRect(0,0,W,horizon)
+      ctx.fillStyle="#a0a0a0"
+      for(let sx=0;sx<W;sx+=47*dpr){
+        const hsh=(sx*7+Math.floor(seed*1000))%255
+        if(hsh<38){
+          const tw=0.6+0.4*Math.sin(d*0.02+sx*0.013)
+          if(tw>0.4){ const sy=(hsh%(horizon-8*dpr))+3*dpr; ctx.globalAlpha=0.6+0.4*tw; ctx.beginPath(); ctx.arc(sx,sy,1*dpr,0,Math.PI*2); ctx.fill() }
+        }
+      }
+      ctx.globalAlpha=1
+const hills=[
+      ["#051510",0.22,420*dpr,22*dpr,0.018/dpr],["#0a201a",0.45,360*dpr,18*dpr,0.024/dpr],["#153025",0.85,300*dpr,14*dpr,0.032/dpr]
+    ]
+hills.forEach(([col,speed,tile,amp,freq])=>{
+        const off=(-d*speed)%tile
+        ctx.fillStyle=col; ctx.beginPath(); ctx.moveTo(-tile+off-20*dpr, horizon)
+        for(let x=-tile+off-20*dpr;x<W+tile+20*dpr;x+=10*dpr){
+          const bump=amp*Math.sin((x+off*0.7)*freq)+amp*0.45*Math.sin((x+off*0.4)*freq*2.3+1.7)
+          ctx.lineTo(x, horizon - Math.max(0,bump))
+        }
+        ctx.lineTo(W+tile+20*dpr,horizon); ctx.lineTo(-tile+off-20*dpr,horizon); ctx.closePath(); ctx.fill()
+      })
+      ctx.fillStyle="rgba(10,20,16,0.5)"; for(let i=0;i<6;i++) ctx.fillRect(0,horizon+i*2*dpr,W,2*dpr)
+      ctx.strokeStyle="#1e2e28"; ctx.beginPath(); ctx.moveTo(0,horizon); ctx.lineTo(W,horizon); ctx.stroke()
+      const n=18, visible=140, halfNear=260*dpr*(W/620), halfFar=42*dpr*(W/620)
+      const centers=[], ys=[], halfs=[]
+      for(let i=0;i<n;i++){
+        const tlin=i/(n-1), pt=persp(tlin)
+        const depth=(1-pt)*visible, wd=d+depth
+        let cx=W/2 + roadCenter(wd)
+        const maxOff= pt<0.15 ? W/2-halfFar-18*dpr : W/2-30*dpr
+        cx=Math.max(W/2-maxOff, Math.min(W/2+maxOff, cx))
+        centers.push(cx); ys.push(horizon*(1-pt)+H*pt); halfs.push(halfFar*(1-pt)+halfNear*pt)
+      }
+      ctx.fillStyle="#1a1a1a"; ctx.strokeStyle="#2a2a2a"; ctx.lineWidth=1*dpr
+      ctx.beginPath(); for(let i=0;i<n;i++) ctx.lineTo(centers[i]-halfs[i], ys[i]); for(let i=n-1;i>=0;i--) ctx.lineTo(centers[i]+halfs[i], ys[i]); ctx.closePath(); ctx.fill(); ctx.stroke()
+      ctx.strokeStyle="#3a3a3a"; ctx.lineWidth=2*dpr
+      ;[-1,1].forEach(s=>{ ctx.beginPath(); for(let i=0;i<n;i++){ const x=centers[i]+s*(halfs[i]-8*dpr); if(i==0) ctx.moveTo(x,ys[i]); else ctx.lineTo(x,ys[i]) } ctx.stroke() })
+      ctx.strokeStyle="#00e69a"
+      const segLens=[]; for(let i=0;i<n-1;i++){ const dx=centers[i+1]-centers[i], dy=ys[i+1]-ys[i]; segLens.push(Math.hypot(dx,dy)) }
+      const dash=14*dpr, gap=14*dpr, pat=dash+gap
+      let off
+      if(isPausedRef.current){
+        off=pausedOffRef.current
+      } else if(isRunningRef.current){
+        off=(d*0.18)%pat
+        pausedOffRef.current=off
+      } else {
+        off=idlePhase*pat
+        pausedOffRef.current=off
+      }
+      let acc=0
+      for(let i=0;i<n-1;i++){
+        const seg=segLens[i], a=acc, b=acc+seg
+        const k0=Math.floor((a-off)/pat), k1=Math.ceil((b-off)/pat)
+        for(let k=k0;k<=k1;k++){
+          const d0=k*pat+off, d1=d0+dash, cs=Math.max(a,d0), ce=Math.min(b,d1)
+          if(ce-cs<2*dpr) continue
+          const f0=(cs-a)/seg, f1=(ce-a)/seg
+          const x0=centers[i]*(1-f0)+centers[i+1]*f0, y0=ys[i]*(1-f0)+ys[i+1]*f0
+          const x1=centers[i]*(1-f1)+centers[i+1]*f1, y1=ys[i]*(1-f1)+ys[i+1]*f1
+          const tmid=(i+0.5)/n, lw=Math.max(1*dpr, 3.2*dpr*(0.35+0.65*tmid))
+          ctx.lineWidth=lw; ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x1,y1); ctx.stroke()
+        }
+        acc+=seg
+      }
+      // scenery
+      const spacing=18, start=Math.floor((d-12)/spacing)*spacing, end=d+visible+18
+      for(let wd=start; wd<end; wd+=spacing){
+        const depth=wd-d
+        if(depth<4||depth>visible-2) continue
+        const t=1-depth/visible
+        const hsh=(Math.floor(seed*100000)+Math.floor(wd))%100000 & 0xFFFFFF
+        let kind=hsh%10
+        if(kind<=2 && (hsh>>8)%100>=60) kind=9
+        if(kind==3 && (hsh>>12)%100>=50) kind=9
+        if(kind>7 && kind!==9) continue
+        if(kind==9) continue
+        const idxf=t*(n-1), lo=Math.floor(idxf), hi=Math.min(n-1,lo+1), f=idxf-lo
+        const cx=centers[lo]*(1-f)+centers[hi]*f, half=halfs[lo]*(1-f)+halfs[hi]*f, y0=ys[lo]*(1-f)+ys[hi]*f
+        const scale=0.28+0.72*t, jitter=((hsh>>4)%11)-5, side=(hsh&1? -1:1)
+        const baseX=cx+side*(half+14*scale*dpr+jitter*scale*0.5*dpr)
+        if(baseX<6*dpr||baseX>W-6*dpr) continue
+        if(kind<=2){
+          const trW=2*scale*dpr, trH=10*scale*dpr, folH=18*scale*dpr, folW=14*scale*dpr
+          ctx.fillStyle = "#2b1a0e";
+          ctx.fillRect(baseX-trW, y0-trH, 2*trW, trH)
+          ctx.fillStyle = "#1c3a2a";
+          ctx.beginPath(); ctx.moveTo(baseX, y0-trH-folH); ctx.lineTo(baseX-folW, y0-trH); ctx.lineTo(baseX+folW, y0-trH); ctx.closePath(); ctx.fill()
+          ctx.fillStyle="#2b1a0e";
+          ctx.beginPath(); ctx.moveTo(baseX, y0-trH-folH); ctx.lineTo(baseX-folW*0.6, y0-trH-folH*0.55); ctx.lineTo(baseX+folW*0.6, y0-trH-folH*0.55); ctx.closePath(); ctx.fill()
+        } else if(kind==3){
+          // bush — rounded cluster (canvas, not tkinter)
+          const bw=12*scale*dpr, bh=8*scale*dpr
+          ctx.fillStyle="#1e3320"; ctx.strokeStyle="#24402e"; ctx.lineWidth=1*dpr
+          ctx.beginPath(); ctx.ellipse(baseX, y0-bh*0.6, bw, bh*0.6, 0, 0, Math.PI*2); ctx.fill(); ctx.stroke()
+          ctx.fillStyle="#244a33"; ctx.strokeStyle="transparent"
+          ctx.beginPath(); ctx.ellipse(baseX-bw*0.15, y0-bh*0.9, bw*0.55, bh*0.5, 0, 0, Math.PI*2); ctx.fill()
+        } else if(kind>=4){
+          // pole/rock — decoupled from fullscreen (always #2a2a2a / #c9a86a)
+          ctx.strokeStyle="#3a3a3a"; ctx.lineWidth=2*scale*dpr; const ph=16*scale*dpr; ctx.beginPath(); ctx.moveTo(baseX,y0); ctx.lineTo(baseX,y0-ph); ctx.stroke()
+          ctx.fillStyle="#c9a86a"; ctx.beginPath(); ctx.ellipse(baseX, y0-ph, 2*scale*dpr, 2*scale*dpr,0,0,Math.PI*2); ctx.fill()
+        }
+      }
+      // mini car
+      const nearCx=centers[n-1], lean=(centers[n-1]-centers[n-3])*0.10, bob=0.35*Math.sin(Date.now()*0.0022+progress*3)
+      let steer=0; if(n>=6) steer=(roadCenter(d+22)-roadCenter(d+6))*0.05
+      const scaleCar=0.85, carW=14*scaleCar*dpr, carH=8*scaleCar*dpr
+      const carX=Math.max(carW+6*dpr, Math.min(W-carW-6*dpr, nearCx+lean+steer)), carY=H-14*dpr+bob*dpr
+      ctx.fillStyle="rgba(0,0,0,0.6)"; ctx.beginPath(); ctx.ellipse(carX, carY+carH-1*dpr, carW, 3*dpr,0,0,Math.PI*2); ctx.fill()
+      ctx.fillStyle="#ffcc33"; ctx.strokeStyle="#ffaa00"; ctx.lineWidth=1*dpr
+      ctx.beginPath(); ctx.moveTo(carX-carW, carY-2*dpr); ctx.lineTo(carX+carW, carY-2*dpr); ctx.lineTo(carX+carW-2*dpr, carY+carH-2*dpr); ctx.lineTo(carX-carW+2*dpr, carY+carH-2*dpr); ctx.closePath(); ctx.fill(); ctx.stroke()
+      ctx.fillStyle="#1a1e1c"; ctx.beginPath(); ctx.moveTo(carX-carW+4*dpr, carY-carH+1*dpr); ctx.lineTo(carX+carW-4*dpr, carY-carH+1*dpr); ctx.lineTo(carX+carW-6*dpr, carY-2*dpr); ctx.lineTo(carX-carW+6*dpr, carY-2*dpr); ctx.closePath(); ctx.fill()
+      ctx.fillStyle="#7ec8e3"; ctx.beginPath(); ctx.moveTo(carX-carW+6*dpr, carY-carH+2*dpr); ctx.lineTo(carX+carW-6*dpr, carY-carH+2*dpr); ctx.lineTo(carX+carW-7*dpr, carY-3*dpr); ctx.lineTo(carX-carW+7*dpr, carY-3*dpr); ctx.closePath(); ctx.fill()
+      ctx.fillStyle="#0a0a0a"; for(let dx of [-carW+4*dpr, carW-4*dpr]) for(let dy of [-1*dpr, carH-4*dpr]){ ctx.beginPath(); ctx.arc(carX+dx, carY+dy, 2*dpr,0,Math.PI*2); ctx.fill() }
+      ctx.fillStyle="#fff7b2"; ctx.beginPath(); ctx.ellipse(carX-carW+2*dpr, carY-0.5*dpr, 1.5*dpr,1.2*dpr,0,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.ellipse(carX+carW-2*dpr, carY-0.5*dpr, 1.5*dpr,1.2*dpr,0,0,Math.PI*2); ctx.fill()
+      raf=requestAnimationFrame(draw)
+    }
+    raf=requestAnimationFrame(draw)
+    return ()=>cancelAnimationFrame(raf)
+  },[progress, seed])
+
+  function onFinish(){
+    const startedAt=startedAtRef.current||new Date().toISOString()
+    const elapsedMin=Math.max(1, Math.round((total-remaining)/60) || Math.round(total/60))
+    const data={started_at:startedAt, finished_at:new Date().toISOString(), duration_min:elapsedMin, intent:intent||"(no intent)", route:routeName, completed:true, sound_on:humOn, km: Number((distRenderRef.current/42).toFixed(1))}
+    setDoneInfo(data); setShowDone(true); setTimeout(()=>setShowDone(false), 5000)
+    startedAtRef.current=null
+    if(window.pywebview && window.pywebview.api && window.pywebview.api.save_session){ try{ window.pywebview.api.save_session(data) }catch{} }
+    try{ const arr=JSON.parse(localStorage.getItem("rf_sessions")||"[]"); arr.push(data); localStorage.setItem("rf_sessions",JSON.stringify(arr.slice(-50))); if(showLog) loadLogs() }catch{}
+    try{ if("Notification" in window && Notification.permission==="granted"){ const n=new Notification("Journey completed ✓", {body: `${routeName} · ${elapsedMin} min — ${intent||"No intent"} · ${data.km} km`}); setTimeout(()=>n.close(), 5000) } }catch{}
+    try{ const ctx2 = audioRef.current?.ctx || new (window.AudioContext||window.webkitAudioContext)(); const o=ctx2.createOscillator(), g=ctx2.createGain(); o.type="sine"; o.frequency.value=880; o.connect(g).connect(ctx2.destination); g.gain.setValueAtTime(0, ctx2.currentTime); g.gain.linearRampToValueAtTime(0.18, ctx2.currentTime+0.02); g.gain.exponentialRampToValueAtTime(0.001, ctx2.currentTime+0.6); o.start(); o.stop(ctx2.currentTime+0.65) }catch{}
+    try{ localStorage.removeItem("rf_state") }catch{}
+  }
+  const fmt=(s)=> String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0")
+  const timeLabel = fmt(remaining)
+  const handleHitRoad = ()=>{ if(isRunning) return; startedAtRef.current=new Date().toISOString(); setIsRunning(true); setIsPaused(false); setSeed(Math.random()) }
+  const handlePauseToggle = ()=>{ if(!isRunning) return; setIsPaused(p=>!p) }
+  const handleReset = ()=>{
+    // log abandoned if was running mid-trip
+    if(isRunning && remaining>0 && remaining<total){
+      const elapsedMin=Math.max(1, Math.round((total-remaining)/60))
+      const data={started_at:startedAtRef.current||new Date().toISOString(), finished_at:new Date().toISOString(), duration_min:elapsedMin, intent:intent||"(no intent)", route:routeName, completed:false, sound_on:humOn, km: Number((distRenderRef.current/42).toFixed(1))}
+      try{ const arr=JSON.parse(localStorage.getItem("rf_sessions")||"[]"); arr.push(data); localStorage.setItem("rf_sessions",JSON.stringify(arr.slice(-50))); if(showLog) loadLogs() }catch{}
+      if(window.pywebview && window.pywebview.api && window.pywebview.api.save_session){ try{ window.pywebview.api.save_session({...data, completed:false}) }catch{} }
+    }
+    startedAtRef.current=null
+    setIsRunning(false); setIsPaused(false); setRemaining(total); distRef.current=0; distRenderRef.current=0; displayDistRef.current=0; setDist(0); t0Ref.current=performance.now(); pausedRef.current=0; pausedAt.current=null
+  }
+  return html`
+    <div class=${isFullscreen ? "is-fs-mode" : ""} style=${{height:"100%",display:"flex",flexDirection:"column"}}>
+      <${AnimatePresence}>
+        ${showCover ? html`<${motion.div} class="cover-overlay" key="cover" initial=${{opacity:0}} animate=${{opacity:1}} exit=${{opacity:0}} transition=${{duration:0.25}} onClick=${(e)=>{ if(e.target.classList.contains("cover-overlay")) dismissCover() }}>
+          <${motion.div} class="cover-card" initial=${{y:18, opacity:0}} animate=${{y:0, opacity:1}} exit=${{y:-12, opacity:0}} transition=${{type:"spring", stiffness:320, damping:26}}>
+            <div class="cover-eyebrow">READY TO ROLL</div>
+            <div class="cover-title">Are you ready to hit the road?</div>
+            <div class="cover-sub">Pick a route, set your intent, and drive into deep work.</div>
+            <div class="cover-intent"><label>Intent</label><input value=${intent} onInput=${e=>setIntent(e.target.value)} onKeyDown=${e=>{ if(e.key==="Enter") dismissCover() }} placeholder='e.g. "finish problem set 3.1"' autoFocus /></div>
+            <div class="cover-cta"><${motion.button} whileTap=${{scale:0.97}} class="btn primary" onClick=${dismissCover}>Let's roll →</${motion.button}></div>
+            <div class="cover-hint">Road keeps idling behind — dim, not paused.</div>
+          </${motion.div}>
+        </${motion.div}>` : null}
+      </${AnimatePresence}>
+      <div class="content-area" style=${{display:"flex", flex:"1", gap:"12px", margin: isFullscreen?"0":"12px 20px", minHeight:"0"}}>
+        <div class="sheet-wrap" style=${{display: isFullscreen?"none":"flex"}}>
+          <div class="sheet-title"><h1>ROADTRIP FOCUS</h1><div class="phase">${isRunning? `On the road — ${routeName}`: "Ready to roll"}</div></div>
+          <div class="sheet-head"><h2>Routes</h2><span style=${{color:"var(--muted)",fontSize:"11px",cursor:"pointer"}} onClick=${()=>{ loadLogs(); setShowLog(true) }}>Trip Log ${(()=>{try{ const n=JSON.parse(localStorage.getItem("rf_sessions")||"[]").length; return n?`(${n})`:""}catch{return ""}})()}</span></div>
+          <div class="sheet-tabs">
+            <button class=${`sheet-tab ${sheetTab==="onroad"?"active":""}`} onClick=${()=>setSheetTab("onroad")}>On the road ${(()=>{const c=ROUTES.length; return `(${c})`})()}</button>
+            <button class=${`sheet-tab ${sheetTab==="delivered"?"active":""}`} onClick=${()=>setSheetTab("delivered")}>Delivered ${(()=>{try{const a=JSON.parse(localStorage.getItem("rf_sessions")||"[]"); return `(${a.filter(r=>r.completed).length})`}catch{return "(0)"}})()}</button>
+          </div>
+          <div class="sheet-intent"><label>Intent</label><input value=${intent} onInput=${e=>setIntent(e.target.value)} placeholder='e.g. "finish problem set 3.1"'/></div>
+          <div class="sheet-list">
+            ${sheetTab==="onroad"
+              ? html`${ROUTES.map(r=> html`<div key=${r[0]} class=${`sheet-row ${routeName===r[0]?"active":""}`} onClick=${()=>{ setRouteName(r[0]); setRouteMin(r[1]); setTotal(r[1]*60); setRemaining(r[1]*60); setSeed(Math.random()); setDetailItem(null)}}>
+                  <div class="sheet-row-top"><span>${r[0]} → ${r[1]}m</span><span class=${`sheet-badge ${routeName===r[0]&&isRunning?"transit":"delivered"}`}>${routeName===r[0]&&isRunning?"IN TRANSIT":"READY"}</span></div>
+                  <div class="sheet-row-sub">Order #RO-${r[1]}${r[1]*100} · ${(r[1]*SCENERY_SPEED*0.35/42).toFixed(1)} km · ${r[2]}</div>
+                </div>`)}
+                ${logRows.filter(r=>!r.completed).slice(0,3).map(r=> html`<div key=${r.finished_at} class="sheet-row" onClick=${()=>setDetailItem(r)}>
+                  <button class="sheet-row-del" title="Delete" onClick=${e=>{ e.stopPropagation(); deleteTransit(r.finished_at) }}>✕</button>
+                  <div class="sheet-row-top" style=${{paddingRight:"28px"}}><span>${(r.intent||"No intent").slice(0,18)} → ${r.route||""}</span><span class="sheet-badge transit">IN TRANSIT</span></div>
+                  <div class="sheet-row-sub">Order #${(r.finished_at||"").slice(11,16).replace(":","")}${Math.floor(Math.random()*900+100)} · ${r.km||0} km · ${r.duration_min||0} min ago</div>
+                </div>`)}
+                ${ROUTES.length===0 ? html`<div class="sheet-empty">No routes</div>` : null}
+              `
+              : html`${(()=>{
+                  const rows=logRows.filter(r=>r.completed)
+                  if(!rows.length) return html`<div class="sheet-empty">No delivered trips — hit the road</div>`
+                  return html`${rows.slice(0,12).map(r=> html`<div key=${r.finished_at} class="sheet-row" onClick=${()=>setDetailItem(r)}>
+                    <div class="sheet-row-top"><span>${(r.intent||"No intent").slice(0,18)} → ${r.route||""}</span><span class="sheet-badge delivered">DELIVERED</span></div>
+                    <div class="sheet-row-sub">Order #${(r.finished_at||"").slice(0,10).replace(/-/g,"")}${String(r.duration_min||0).padStart(2,"0")} · ${r.km||0} km · ${(r.finished_at||"").slice(0,16).replace("T"," ")}</div>
+                  </div>`)}`
+                })()}`
+            }
+            ${detailItem ? html`<div class="sheet-detail" onClick=${e=>e.stopPropagation()}>
+              <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center"}}><h3>${detailItem.intent||"No intent"} → ${detailItem.route||""}</h3><span style=${{cursor:"pointer",color:"var(--muted)"}} onClick=${()=>setDetailItem(null)}>✕</span></div>
+              <div class="sheet-detail-bar"><div class="sheet-detail-fill" style=${{width:`${detailItem.completed?100:60}%`}}></div></div>
+              <div style=${{fontSize:"11px",color:"var(--muted)"}}>Order #${(detailItem.finished_at||"").slice(0,16).replace(/[-T:]/g,"")} · <span class=${`sheet-badge ${detailItem.completed?"delivered":"transit"}`} style=${{marginLeft:"6px"}}>${detailItem.completed?"DELIVERED":"IN TRANSIT"}</span></div>
+              <div class="sheet-detail-grid">
+                <div><span>Intent</span><b>${(detailItem.intent||"No intent").slice(0,24)}</b></div>
+                <div><span>Route</span><b>${detailItem.route||""} · ${detailItem.duration_min||0} min</b></div>
+                <div><span>Distance</span><b>${detailItem.km||0} km</b></div>
+                <div><span>Last Stop</span><b>${(()=>{const d=new Date(detailItem.finished_at); const h=Math.floor((Date.now()-d)/3600000); return h<1?"now":h+"h ago"})()}</b></div>
+              </div>
+              <div style=${{display:"flex",gap:"8px",marginTop:"6px"}}>
+                <button onClick=${()=>setDetailItem(null)} style=${{flex:1,padding:"6px",borderRadius:"8px",background:"var(--accent)",color:"#00140e",border:"none",fontWeight:700,cursor:"pointer"}}>Close</button>
+                <button onClick=${()=>{ setDetailItem(null); setRouteName(detailItem.route||ROUTES[0][0]); const m=ROUTES.find(x=>x[0]===detailItem.route); if(m){setRouteMin(m[1]); setTotal(m[1]*60); setRemaining(m[1]*60)} }} style=${{padding:"6px 10px",borderRadius:"8px",background:"var(--surface2)",border:"1px solid var(--outline)",color:"var(--text)",cursor:"pointer"}}>Use route</button>
+                ${!detailItem.completed ? html`<button onClick=${()=>{ deleteTransit(detailItem.finished_at) }} style=${{padding:"6px 10px",borderRadius:"8px",background:"rgba(204,51,51,0.12)",border:"1px solid rgba(204,51,51,0.28)",color:"#ff6b6b",cursor:"pointer",fontWeight:700}}>Delete</button>` : null}
+              </div>
+            </div>` : null}
+          </div>
+          <div class="sheet-footer">
+            <${AnimatePresence} mode="wait">
+              <${motion.div} key=${isRunning ? (isPaused ? "paused" : "active") : "idle"} initial=${{opacity:0, y:6}} animate=${{opacity:1, y:0}} exit=${{opacity:0, y:-6}} transition=${{duration:0.18}} class="hud-main">
+                <div class="hud-time">${fmt(remaining)}</div>
+                <div class="hud-progress"><div class="bar"><${motion.div} class="fill" animate=${{width:`${progress*100}%`}} transition=${{type:"spring",stiffness:120,damping:18}} /></div><div class="hud-meta"><span>${(dist/42).toFixed(1)} km · CRUISE</span><span class="pct">${Math.round(progress*100)}%</span></div></div>
+                ${!isRunning
+                  ? html`<${motion.button} whileTap=${{scale:0.97}} class="am-icon primary" aria-label="Hit the road" title="Hit the road (Space)" onClick=${handleHitRoad}><${IconPlay} /></${motion.button}>`
+                  : html`<button class="am-icon primary" aria-label=${isPaused ? "Resume" : "Pause"} title=${isPaused ? "Resume (Space)" : "Pause (Space)"} onClick=${handlePauseToggle}>${isPaused ? html`<${IconPlay} />` : html`<${IconPause} />`}</button>`}
+                ${(isRunning || remaining!==total) ? html`<button class="am-icon small" aria-label="Reset" title="Reset (R)" onClick=${handleReset}><${IconReset} /></button>` : null}
+              </${motion.div}>
+            </${AnimatePresence}>
+            <div class="sound">
+              <label><input type="checkbox" checked=${humOn} onChange=${e=>setHumOn(e.target.checked)}/> Road hum</label>
+              <input type="range" min="0" max="0.5" step="0.02" value=${vol} onInput=${e=>setVol(parseFloat(e.target.value))}/>
+              <select value=${noiseKind} onChange=${e=>setNoiseKind(e.target.value)}>
+                <option value="brown">Brown</option><option value="pink">Pink</option><option value="white">White</option><option value="rain">Rain</option>
+              </select>
+            </div>
+            <div class="quick">${[25,50,90].map(m=> html`<button key=${m} class=${`pill ${routeMin===m?"active":""}`} onClick=${()=>{ setRouteMin(m); const r=ROUTES.find(x=>x[1]==m); if(r) setRouteName(r[0]); setTotal(m*60); setRemaining(m*60)}}>${m}m</button>`)}<button class="pill" onClick=${()=>{ const v=prompt("Custom 1-180"); const n=parseInt(v); if(n>=1&&n<=180){ setRouteName(`Custom · ${n}m`); setRouteMin(n); setTotal(n*60); setRemaining(n*60)} }}>Custom</button></div>
+            <div class="quote">“${["Focus is a muscle","Small consistent sessions beat long distracted ones","Deep work now, freedom later"][Math.floor(Date.now()/8000)%3]}”</div>
+          </div>
+        </div>
+        <div ref=${canvasWrapRef} class="canvas-wrap"
+        onMouseMove=${resetHideTimer}
+        onTouchStart=${resetHideTimer}
+        onClick=${(e)=>{
+          const t=e.target
+          if(t.closest && (t.closest(".am-controls")||t.closest(".am-scrub-pill")||t.closest(".am-top-pill")||t.closest(".am-fs"))) return
+          if(!isFullscreen) return
+          if(!controlsVisible) setControlsVisible(true)
+          resetHideTimer()
+        }}
+        style=${{flex:"1", margin:"0"}}>
+          <canvas ref=${canvasRef} style=${{width:"100%",height:"100%"}}></canvas>
+          <button class="am-fs" aria-label=${isFullscreen ? "Exit fullscreen" : "Enter fullscreen"} title=${isFullscreen ? "Exit fullscreen (Esc)" : "Fullscreen (F)"} onClick=${()=> isFullscreen ? exitMapFullscreen() : enterMapFullscreen()}>
+            ${isFullscreen ? html`<${IconExit} />` : html`<${IconExpand} />`}
+          </button>
+          <${AnimatePresence}>
+            $${showDone ? html`<${motion.div} key="done" initial=${{x:400, opacity:0}} animate=${{x:0, opacity:1}} exit=${{x:400, opacity:0}} transition=${{type:"spring", stiffness:320, damping:28}} style=${{position:"absolute", top:"16px", right:"16px", width:"340px", background:"rgba(15,20,25,0.96)", backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)", border:"1px solid rgba(30,42,51,0.9)", borderRadius:"12px", padding:"14px", zIndex:20, boxShadow:"0 20px 40px rgba(0,0,0,0.5)"}}>
+              <div style=${{color:"var(--accent)", fontWeight:800, fontSize:"13px"}}>Journey completed ✓</div>
+              <div style=${{color:"var(--text)", fontSize:"12px", marginTop:"4px"}}>${doneInfo?.route} · ${doneInfo?.duration_min} min</div>
+              <div style=${{color:"var(--muted)", fontSize:"11px", fontStyle:"italic", marginTop:"2px", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis"}}>${doneInfo?.intent}</div>
+              <div style=${{display:"flex", gap:"8px", marginTop:"10px"}}>
+                <button onClick=${()=>setShowDone(false)} style=${{flex:1, padding:"6px", borderRadius:"8px", background:"var(--accent)", color:"#00140e", border:"none", fontWeight:700, cursor:"pointer"}}>Dismiss</button>
+                <button onClick=${()=>{ setShowDone(false); loadLogs(); setShowLog(true) }} style=${{padding:"6px 10px", borderRadius:"8px", background:"var(--surface)", border:"1px solid var(--outline)", color:"var(--muted)", cursor:"pointer"}}>Trip Log</button>
+              </div>
+            </motion.div>` : null}
+          </${AnimatePresence}>
+          ${isFullscreen ? html`<div style=${{position:"absolute",inset:"0",pointerEvents:"none"}}>
+            <div class=${`am-top ${controlsVisible ? "" : "hidden"}`}>
+              <div class="am-top-pill"><b>${intent||"No intent"}</b><span style=${{color:"var(--muted)",fontSize:"11px"}}>${routeName} · ${routeMin} min · ${(dist/42).toFixed(1)} km</span></div>
+            </div>
+            <div class=${`am-dock ${controlsVisible ? "" : "hidden"}`} onMouseMove=${resetHideTimer}>
+              <div class="am-scrub-pill">
+                <div class="yt-track"><div class="yt-fill" style=${{width:`${progress*100}%`}}></div></div>
+              </div>
+            </div>
+            <div class=${`am-controls ${controlsVisible ? "" : "hidden"}`} onMouseMove=${resetHideTimer}>
+                ${!isRunning
+                  ? html`<button class="am-icon primary" aria-label="Hit the road" title="Hit the road" onClick=${handleHitRoad}><${IconPlay} /></button>`
+                  : html`<button class="am-icon primary" aria-label=${isPaused ? "Resume" : "Pause"} title=${isPaused ? "Resume" : "Pause"} onClick=${handlePauseToggle}>${isPaused ? html`<${IconPlay} />` : html`<${IconPause} />`}</button>`}
+                <button class="am-icon small" aria-label="Reset" title="Reset" onClick=${handleReset}><${IconReset} /></button>
+                <div class="am-divider"></div>
+                <span class="am-time">${timeLabel} · ${Math.round(progress*100)}%</span>
+                <button class="am-icon small" aria-label="Exit fullscreen" title="Exit (Esc)" onClick=${exitMapFullscreen}><${IconExit} /></button>
+            </div>
+          </div>` : null}
+        </div>
+      </div>
+      ${showLog ? html`<div class="log-overlay" onClick=${()=>setShowLog(false)}>
+        <${motion.div} class="log-card" initial=${{y:16, opacity:0}} animate=${{y:0, opacity:1}} exit=${{y:16, opacity:0}} onClick=${e=>e.stopPropagation()}>
+          <div class="log-head">
+            <h2>Trip Log</h2>
+            <div class="log-stats">${logRows.length} records · ${logRows.filter(r=>r.completed).length} completed · ${logRows.reduce((a,r)=>a+(r.duration_min||0),0)} min</div>
+            <button onClick=${()=>setShowLog(false)} style=${{padding:"6px 10px",borderRadius:"8px",background:"var(--surface)",border:"1px solid var(--outline)",color:"var(--muted)",cursor:"pointer",fontSize:"12px"}}>Close</button>
+          </div>
+          <div class="log-body">
+            ${logRows.length===0 ? html`<div class="log-empty">No trips yet — hit the road</div>` : html`<table class="log-table">
+              <thead><tr><th>Finished</th><th>Route</th><th>Min</th><th>Intent</th><th>Done</th></tr></thead>
+              <tbody>
+                ${logRows.map(r=> html`<tr>
+                  <td>${(r.finished_at||"").slice(0,16).replace("T"," ")}</td>
+                  <td>${r.route||""}</td>
+                  <td>${r.duration_min||0}</td>
+                  <td class="log-intent" title=${r.intent||""}>${(r.intent||"").slice(0,48)}</td>
+                  <td style=${{color: r.completed ? "var(--accent)" : "var(--muted)", fontWeight:700}}>${r.completed?"✓":"—"}${r.km?` · ${r.km}km`:""}</td>
+                </tr>`)}
+              </tbody>
+            </table>`}
+          </div>
+          <div class="log-foot">
+            <button class="danger" onClick=${clearLogs}>Clear log</button>
+            <div style=${{display:"flex",gap:"8px"}}>
+              <button onClick=${exportLogs}>Export .md</button>
+              <button class="primary-log" onClick=${()=>setShowLog(false)}>Close</button>
+            </div>
+          </div>
+        </motion.div>
+      </div>` : null}
+    </div>
+  `
+}
+createRoot(document.getElementById("root")).render(React.createElement(App))
+</script>
+</body>
+</html>
