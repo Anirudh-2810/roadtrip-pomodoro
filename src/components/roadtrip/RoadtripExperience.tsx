@@ -5,21 +5,21 @@ import { ensureRoadtripAudio, setRoadtripVol } from "@/lib/audio-roadtrip";
 import { saveGuestSession } from "@/lib/guest";
 
 type NoiseKind = "brown" | "pink" | "white" | "rain";
-const ROUTES: Array<[string, number, string]> = [
-  ["Coastal Hop", 25, "Quick sprint"],
-  ["Desert Stretch", 50, "Deep work block"],
-  ["Mountain Pass", 90, "Long haul"],
-  ["Cross-Country", 120, "Marathon"],
+const ROUTES: Array<{ name: string; mins: number; desc: string; order: string; km: string }> = [
+  { name: "Coastal Hop", mins: 25, desc: "Quick sprint — one focused stretch", order: "RO-252500", km: "3.8 km" },
+  { name: "Desert Stretch", mins: 50, desc: "Deep work block — stay with it", order: "RO-505000", km: "7.5 km" },
+  { name: "Mountain Pass", mins: 90, desc: "Long haul — settle in", order: "RO-909000", km: "13.5 km" },
+  { name: "Cross-Country", mins: 120, desc: "Marathon — the scenic way", order: "RO-12012000", km: "18.0 km" },
 ];
 const SCENERY_SPEED = 18;
 function fmt(s: number) { return `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`; }
 
 export default function RoadtripExperience({ userEmail }: { userEmail: string | null }) {
   const [intent, setIntent] = useState("");
-  const [routeName, setRouteName] = useState(ROUTES[0][0]);
-  const [routeMin, setRouteMin] = useState(ROUTES[0][1]);
-  const [remaining, setRemaining] = useState(ROUTES[0][1]*60);
-  const [total, setTotal] = useState(ROUTES[0][1]*60);
+  const [routeName, setRouteName] = useState(ROUTES[0].name);
+  const [routeMin, setRouteMin] = useState(ROUTES[0].mins);
+  const [remaining, setRemaining] = useState(ROUTES[0].mins*60);
+  const [total, setTotal] = useState(ROUTES[0].mins*60);
   const [isRunning, setIsRunning] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -32,8 +32,8 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
   const [logRows, setLogRows] = useState<Array<Record<string,unknown>>>([]);
   const [noiseKind, setNoiseKind] = useState<NoiseKind>("brown");
   const [humOn, setHumOn] = useState(true);
-  const [vol, setVolV] = useState(0.12);
-  const [sheetTab, setSheetTab] = useState<"onroad"|"history">("onroad");
+  const [vol, setVolV] = useState(0.28);
+  const [sheetTab, setSheetTab] = useState<"onroad"|"delivered">("onroad");
   const [csrf, setCsrf] = useState<string|null>(null);
   const [customMin, setCustomMin] = useState("");
 
@@ -131,7 +131,7 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
   useEffect(()=>{ if(showLog) loadLogs(); },[showLog,loadLogs]);
   useEffect(()=>{ loadLogs(); },[loadLogs]);
   const clearLogs=()=>{ if(!confirm("Clear all trip history?")) return; localStorage.removeItem("rf_sessions"); setLogRows([]); };
-  const deleteTransit=(finished_at:unknown)=>{ if(!confirm("Delete this in-transit trip?")) return; try{ const arr=JSON.parse(localStorage.getItem("rf_sessions")||"[]") as Array<Record<string,unknown>>; const nxt=arr.filter(r=>String(r.finished_at)!==String(finished_at)); localStorage.setItem("rf_sessions", JSON.stringify(nxt)); loadLogs(); }catch{} };
+  const deleteTransit=(finished_at:unknown)=>{ if(!confirm("Delete this trip?")) return; try{ const arr=JSON.parse(localStorage.getItem("rf_sessions")||"[]") as Array<Record<string,unknown>>; const nxt=arr.filter(r=>String(r.finished_at)!==String(finished_at)); localStorage.setItem("rf_sessions", JSON.stringify(nxt)); loadLogs(); }catch{} };
   const exportLogs=()=>{
     const rows=logRows.length? logRows : (JSON.parse(localStorage.getItem("rf_sessions")||"[]") as Array<Record<string,unknown>>).slice().reverse();
     if(!rows.length) return;
@@ -211,97 +211,166 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
   },[isRunning,remaining,total,intent,routeName,humOn,routeMin,showLog,loadLogs]);
 
   const pct= total ? Math.round(((total-remaining)/total)*100) : 0;
-  const ControlButton = isRunning ? (
-    <button onClick={handlePauseToggle} className="grid h-10 w-10 place-items-center rounded-full bg-white/10 text-sm">{isPaused ? "Play" : "Pause"}</button>
-  ) : (
-    <button onClick={handleHitRoad} className="grid h-11 w-11 place-items-center rounded-full bg-[#10B981] text-sm font-bold text-[#00140e]">Go</button>
-  );
+  const km = (distRenderRef.current/42).toFixed(1);
+  const deliveredCount = logRows.filter(r=>r.completed).length;
+  const onRoadCount = ROUTES.length;
 
   return (
-    <div className={"flex min-h-[calc(100vh-56px)] flex-col "+(isFullscreen?"is-fs-mode":"")} onMouseMove={resetHideTimer}>
+    <div className={"flex min-h-[calc(100vh-56px)] flex-col bg-[#070A0E] "+(isFullscreen?"is-fs-mode":"")} onMouseMove={resetHideTimer}>
       {showCover && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-[rgba(7,10,14,0.78)] p-5 backdrop-blur-[18px]" onClick={e=>{ if(e.target===e.currentTarget) dismissCover(); }}>
           <div className="flex w-[min(440px,92vw)] flex-col gap-3.5 rounded-[18px] border border-[rgba(30,42,51,0.92)] bg-[rgba(15,20,25,0.96)] p-5 text-center shadow-xl">
             <div className="text-[11px] font-extrabold tracking-[1.2px] text-[#10B981]">READY TO ROLL</div>
-            <div className="text-[22px] font-extrabold leading-tight">Are you ready to hit the road?</div>
-            <div className="text-[13px] leading-[1.45] text-[#7a8a7a]">Pick an intent and a route — the highway will idle behind you.</div>
-            <div className="rounded-xl border border-white/10 bg-[#121212] p-3 text-left"><label className="mb-1.5 block text-[11px] font-bold text-[#7a8a7a]">Intent</label><input value={intent} onChange={e=>setIntent(e.target.value.slice(0,200))} onKeyDown={e=>{ if(e.key==="Enter") dismissCover(); }} placeholder="e.g. finish math sheet" className="w-full rounded-[10px] border border-white/10 bg-white/[0.05] px-3 py-2 text-sm outline-none focus:border-[#10B981]" /></div>
-            <button onClick={dismissCover} className="mx-auto inline-flex max-w-[280px] items-center justify-center rounded-full bg-[#10B981] px-6 py-3 text-sm font-bold text-[#00140e]">Let&apos;s roll</button>
-            <div className="text-[11px] text-[#7a8a7a]">Road keeps idling behind · Space to start/pause</div>
+            <div className="text-[22px] font-extrabold leading-tight text-white">Are you ready to hit the road?</div>
+            <div className="text-[13px] leading-[1.45] text-zinc-400">Pick an intent and a route — the highway will idle behind you.</div>
+            <div className="rounded-xl border border-white/10 bg-[#121212] p-3 text-left"><label className="mb-1.5 block text-[11px] font-bold text-zinc-500">Intent</label><input value={intent} onChange={e=>setIntent(e.target.value.slice(0,200))} onKeyDown={e=>{ if(e.key==="Enter") dismissCover(); }} placeholder='e.g. &quot;finish problem set 3.1&quot;' className="w-full rounded-[10px] border border-white/10 bg-white/[0.05] px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-[#10B981]" /></div>
+            <button onClick={dismissCover} className="mx-auto inline-flex max-w-[280px] items-center justify-center rounded-full bg-[#10B981] px-6 py-3 text-sm font-bold text-[#00140e]">Let&apos;s roll →</button>
+            <div className="text-[11px] text-zinc-500">Road keeps idling behind · Space to start/pause</div>
           </div>
         </div>
       )}
-      <div className="flex min-h-0 flex-1 flex-col gap-3 p-3 lg:flex-row">
+      <div className="flex min-h-0 flex-1 gap-0 lg:gap-3 p-0 lg:p-3 bg-[#070A0E]">
+        {/* Left sidebar - exactly like Image 1 */}
         {!isFullscreen && (
-          <div className="flex w-full max-w-[380px] shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#121212] shadow-xl lg:w-[36%]">
-            <div className="border-b border-white/10 p-3.5"><h1 className="text-sm font-extrabold tracking-[0.8px] text-[#10B981]">ROADTRIP FOCUS</h1><div className="mt-1 text-[11px] font-semibold text-[#9ab0a0]">{isRunning ? `On the road · ${routeName} · ${Math.round(distRenderRef.current/42)} km` : `Ready · ${routeName}`}</div></div>
-            <div className="flex gap-2 border-b border-white/10 p-2.5">
-              <button onClick={()=>{ setSheetTab("onroad"); }} className={"flex-1 rounded-full border px-3 py-1.5 text-xs font-bold "+(sheetTab==="onroad" ? "border-[#10B981] bg-[#10B981] text-[#00140e]" : "border-white/10 bg-[#1a1a1e] text-[#7a8a7a]")}>On the road</button>
-              <button onClick={()=>{ setSheetTab("history"); loadLogs(); }} className={"flex-1 rounded-full border px-3 py-1.5 text-xs font-bold "+(sheetTab==="history" ? "border-[#10B981] bg-[#10B981] text-[#00140e]" : "border-white/10 bg-[#1a1a1e] text-[#7a8a7a]")}>Trip history</button>
+          <div className="flex w-full lg:w-[380px] shrink-0 flex-col overflow-hidden rounded-none lg:rounded-2xl border-0 lg:border border-white/10 bg-[#0F1215] shadow-none lg:shadow-xl">
+            {/* Header */}
+            <div className="px-4 pt-4 pb-3 border-b border-white/[0.06]">
+              <h1 className="text-[12px] font-extrabold tracking-[1.4px] text-[#00E69A]">ROADTRIP FOCUS</h1>
+              <p className="mt-0.5 text-[11px] text-zinc-500">Ready to roll</p>
             </div>
-            <div className="border-b border-white/10 p-3"><label className="mb-1.5 block text-[11px] font-bold text-[#7a8a7a]">Intent</label><input value={intent} onChange={e=>setIntent(e.target.value.slice(0,200))} placeholder="what does done look like?" className="w-full rounded-xl border border-white/10 bg-white/[0.05] px-3 py-2 text-xs outline-none focus:border-[#10B981]" /></div>
+            {/* Routes heading */}
+            <div className="px-4 pt-3 pb-2 flex items-center justify-between">
+              <span className="text-[11px] font-bold tracking-[0.8px] text-[#00E69A]">Routes</span>
+              <button onClick={()=>{ setSheetTab("delivered"); }} className="text-[11px] text-zinc-500 hover:text-zinc-300">Trip Log ({logRows.length})</button>
+            </div>
+            {/* Pills */}
+            <div className="px-4 pb-3 flex gap-2">
+              <button onClick={()=> setSheetTab("onroad")} className={"flex-1 rounded-full px-3 py-1.5 text-xs font-bold transition "+(sheetTab==="onroad" ? "bg-[#00E69A] text-[#00140e]" : "bg-[#1A1E23] text-zinc-500 border border-white/10")}>On the road ({onRoadCount})</button>
+              <button onClick={()=>{ setSheetTab("delivered"); loadLogs(); }} className={"flex-1 rounded-full px-3 py-1.5 text-xs font-bold transition "+(sheetTab==="delivered" ? "bg-[#00E69A] text-[#00140e]" : "bg-[#1A1E23] text-zinc-500 border border-white/10")}>Delivered ({deliveredCount})</button>
+            </div>
+            {/* Intent */}
+            <div className="px-4 pb-3">
+              <label className="block mb-1.5 text-[11px] font-bold text-zinc-400">Intent</label>
+              <input value={intent} onChange={e=>setIntent(e.target.value.slice(0,200))} placeholder='e.g. &quot;finish problem set 3.1&quot;' className="w-full rounded-full border border-white/10 bg-[#1A1E23] px-3.5 py-2 text-xs text-white outline-none placeholder:text-zinc-600 focus:border-[#00E69A]/40" />
+            </div>
+
+            {/* Content area */}
             {sheetTab==="onroad" ? (
-              <div className="flex-1 overflow-auto p-2">
-                <div className="mb-2 text-[11px] font-bold text-[#7a8a7a]">Routes</div>
-                {ROUTES.map(([name,mins,desc])=> (
-                  <button key={name} onClick={()=>{ if(isRunning) return; setRouteName(name); setRouteMin(mins); setTotal(mins*60); setRemaining(mins*60); }} className={"mb-2 w-full rounded-xl border p-2.5 text-left "+(routeName===name ? "border-[#10B981] bg-[#10B981]/10" : "border-white/10 bg-[#1a1a1e]")}>
-                    <div className="flex items-center justify-between text-xs font-bold"><span>{name}</span><span className={"rounded-full px-2 py-0.5 text-[10px] "+(routeName===name?"bg-[#10B981] text-[#00140e]":"bg-[#121212] text-[#7a8a7a] border border-white/10")}>{mins}m</span></div>
-                    <div className="mt-1 text-[11px] text-[#7a8a7a]">{desc as string}</div>
-                  </button>
-                ))}
-                <div className="mt-2 flex gap-2"><input value={customMin} onChange={e=>setCustomMin(e.target.value)} placeholder="Custom mm:ss or min" className="flex-1 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs outline-none" /></div>
-                {(()=>{ const inTransit=logRows.filter(r=>!r.completed).slice(0,3); return inTransit.length ? <div className="mt-3"><div className="mb-1.5 text-[11px] font-bold text-[#7a8a7a]">In transit</div>{inTransit.map((r,i)=><div key={String(r.finished_at??i)} className="relative mb-2 rounded-xl border border-white/10 bg-[#1a1a1e] p-2.5 pr-7"><div className="flex items-center justify-between text-xs font-bold"><span>{String(r.route??routeName)}</span><span className="rounded-full bg-[#10B981] px-2 py-0.5 text-[10px] text-[#00140e]">IN TRANSIT</span></div><div className="mt-1 truncate text-[11px] text-[#7a8a7a]">{String(r.intent??"")}</div><button onClick={e=>{ e.stopPropagation(); deleteTransit(r.finished_at); }} className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-full border border-red-500/25 bg-red-500/10 text-xs text-red-400">x</button></div>)}</div> : null; })()}
+              <div className="flex-1 overflow-auto px-2 pb-2 space-y-2">
+                {ROUTES.map(r=> {
+                  const active = routeName===r.name;
+                  return (
+                    <button key={r.name} onClick={()=>{ if(isRunning) return; setRouteName(r.name); setRouteMin(r.mins); setTotal(r.mins*60); setRemaining(r.mins*60); }} className={"w-full text-left rounded-xl border p-3 transition "+(active ? "bg-[#00E69A]/10 border-[#00E69A]/30" : "bg-[#1A1E23] border-white/[0.06] hover:border-white/15")}>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-white">{r.name} → {r.mins}m</span>
+                        <span className={"rounded-full px-2 py-0.5 text-[9px] font-extrabold tracking-wide "+(active ? "bg-[#00E69A] text-[#00140e]" : "bg-black border border-white/10 text-zinc-600")}>READY</span>
+                      </div>
+                      <div className="mt-1 text-[10px] leading-tight text-zinc-500">Order #{r.order} · {r.km} · {r.desc}</div>
+                    </button>
+                  );
+                })}
+                <div className="pt-1">
+                  <input value={customMin} onChange={e=>setCustomMin(e.target.value)} placeholder="Custom minutes or mm:ss" className="w-full rounded-full border border-white/10 bg-[#1A1E23] px-3.5 py-2 text-xs text-white outline-none placeholder:text-zinc-600" />
+                </div>
               </div>
             ) : (
-              <div className="flex-1 overflow-auto p-2">
-                {!logRows.length ? <div className="p-7 text-center text-xs italic text-[#7a8a7a]">No trips yet — hit the road!</div> : logRows.slice(0,50).map((r,i)=><div key={String(r.finished_at??i)} className="mb-2 rounded-xl border border-white/10 bg-[#1a1a1e] p-2.5"><div className="flex items-center justify-between text-xs font-bold"><span>{String(r.route??"")} · {Number(r.duration_min??0)}m</span><span className={"rounded-full px-2 py-0.5 text-[10px] "+(r.completed?"bg-[#10B981]/20 text-[#10B981]":"bg-white/10 text-[#7a8a7a]")}>{(r.completed as boolean)?"done":"abandoned"}</span></div><div className="mt-1 truncate text-[11px] text-[#7a8a7a]">{String(r.intent??"")} · {String(r.finished_at??"").slice(0,16).replace("T"," ")}</div></div>)}
+              <div className="flex-1 overflow-auto px-2 pb-2 space-y-2">
+                {!logRows.length ? <div className="py-10 text-center text-xs italic text-zinc-600">No trips yet — hit the road!</div> : logRows.slice(0,50).map((r,i)=>(
+                  <div key={String(r.finished_at??i)} className="rounded-xl border border-white/[0.06] bg-[#1A1E23] p-3">
+                    <div className="flex items-center justify-between text-xs font-bold text-white"><span>{String(r.route??"")} · {Number(r.duration_min??r.duration_sec ? Math.round(Number(r.duration_sec)/60) : 0)}m</span><span className={"rounded-full px-2 py-0.5 text-[9px] "+((r.completed as boolean)?"bg-[#00E69A]/20 text-[#00E69A]":"bg-white/10 text-zinc-500")}>{(r.completed as boolean)?"DELIVERED":"IN TRANSIT"}</span></div>
+                    <div className="mt-1 truncate text-[10px] text-zinc-500">{String(r.intent??"")} · {String(r.finished_at??"").slice(0,16).replace("T"," ")}</div>
+                    <button onClick={()=> deleteTransit(r.finished_at)} className="mt-1 text-[10px] text-red-400 hover:text-red-300">Delete</button>
+                  </div>
+                ))}
               </div>
             )}
-            <div className="border-t border-white/10 bg-[rgba(28,30,34,0.62)] p-3 backdrop-blur-xl">
-              <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-[rgba(28,30,34,0.72)] p-3">
-                <div className="min-w-[78px] text-center font-mono text-[22px] font-extrabold text-[#10B981] tabular-nums">{fmt(remaining)}</div>
-                <div className="flex flex-1 flex-col gap-1.5"><div className="h-1.5 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full" style={{ width: `${pct}%`, background:"linear-gradient(90deg,#10B981,#059669)" }} /></div><div className="flex justify-between text-[10px] text-[#7a8a7a]"><span>{routeName} · {pct}%</span><span>{Math.round(distRenderRef.current/42)} km</span></div></div>
-                {ControlButton}
-                {(isRunning || remaining!==total) && <button onClick={handleReset} className="grid h-8 w-8 place-items-center rounded-full border border-white/10 text-xs">R</button>}
+
+            {/* Bottom controls - exactly like Image 1 */}
+            <div className="border-t border-white/[0.06] bg-[#0F1215] p-3 space-y-3">
+              {/* Timer bar */}
+              <div className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-[#1A1E23] px-3 py-2.5">
+                <div className="font-mono text-[18px] font-extrabold leading-none text-[#00E69A] tabular-nums">{fmt(remaining)}</div>
+                <div className="flex flex-1 flex-col gap-1">
+                  <div className="h-1.5 overflow-hidden rounded-full bg-black"><div className="h-full rounded-full bg-[#00E69A]" style={{ width: `${pct}%` }} /></div>
+                  <div className="flex justify-between text-[9px] font-medium text-zinc-500"><span>{km} km · CRUISE</span><span>{pct}%</span></div>
+                </div>
+                <button onClick={()=> isRunning ? handlePauseToggle() : handleHitRoad()} className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#00E69A] text-[#00140e] hover:bg-[#00D99A]">
+                  <span className="text-sm leading-none">{isRunning ? (isPaused ? "▶" : "❚❚") : "▶"}</span>
+                </button>
+                <button onClick={handleReset} className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white/10 text-zinc-400 hover:bg-white/15 text-xs">↻</button>
               </div>
-              <div className="mt-3 flex items-center justify-center gap-2 rounded-lg border border-white/10 bg-[#121212] p-2 text-xs text-[#7a8a7a]">
-                <label className="flex items-center gap-1.5"><input type="checkbox" checked={humOn} onChange={e=>setHumOn(e.target.checked)} /> hum</label>
-                <input type="range" min={0} max={0.5} step={0.01} value={vol} onChange={e=>setVolV(parseFloat(e.target.value))} />
-                <select value={noiseKind} onChange={e=>setNoiseKind(e.target.value as NoiseKind)} className="rounded-md border border-white/10 bg-white/5 px-1 py-1 text-xs"><option value="brown">brown</option><option value="pink">pink</option><option value="white">white</option><option value="rain">rain</option></select>
-                <button onClick={loadLogs} className="ml-auto rounded-full border border-white/10 px-2 py-1 text-[10px]">Log</button>
+              {/* Sound controls */}
+              <div className="flex items-center gap-2 rounded-full border border-white/[0.06] bg-[#1A1E23] px-3 py-2">
+                <label className="flex items-center gap-1.5 text-[11px] text-zinc-400 shrink-0">
+                  <input type="checkbox" checked={humOn} onChange={e=>setHumOn(e.target.checked)} className="h-3 w-3 rounded border-white/20 bg-transparent accent-[#00E69A]" />
+                  Road hum
+                </label>
+                <input type="range" min={0} max={0.5} step={0.01} value={vol} onChange={e=>setVolV(parseFloat(e.target.value))} className="flex-1 accent-[#00E69A] h-1" />
+                <select value={noiseKind} onChange={e=>setNoiseKind(e.target.value as NoiseKind)} className="rounded-full border border-white/10 bg-[#0F1215] px-2 py-1 text-[11px] text-white outline-none">
+                  <option value="brown">Brown</option><option value="pink">Pink</option><option value="white">White</option><option value="rain">Rain</option>
+                </select>
               </div>
-              {!userEmail && <div className="mt-2 flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs"><span className="text-zinc-400">Guest · Sync to save</span><a href="/signup" className="rounded-full bg-white px-3 py-1 font-medium text-black">Sync</a></div>}
+              {/* Quick pills */}
+              <div className="flex gap-1.5 justify-center">
+                {[25,50,90].map(m=> (
+                  <button key={m} onClick={()=>{ if(isRunning) return; const r=ROUTES.find(x=>x.mins===m); if(r){ setRouteName(r.name); setRouteMin(r.mins); setTotal(r.mins*60); setRemaining(r.mins*60); }}} className={"rounded-full px-3 py-1 text-xs font-bold border "+(routeMin===m && !customMin ? "bg-[#00E69A] border-[#00E69A] text-[#00140e]" : "bg-[#1A1E23] border-white/10 text-zinc-400")}>{m}m</button>
+                ))}
+                <button onClick={()=>{ const v=prompt("Custom minutes (1-180) or mm:ss"); if(v){ setCustomMin(v); } }} className={"rounded-full px-3 py-1 text-xs font-bold border "+(customMin ? "bg-[#00E69A] border-[#00E69A] text-[#00140e]" : "bg-[#1A1E23] border-white/10 text-zinc-400")}>Custom</button>
+              </div>
+              <div className="text-center text-[11px] italic text-zinc-600">“Deep work now, freedom later”</div>
             </div>
           </div>
         )}
-        <div ref={canvasWrapRef} className={"relative flex flex-1 overflow-hidden rounded-2xl border border-white/10 bg-[#121212] "+(isFullscreen ? "fixed inset-0 z-20 rounded-none border-0" : "")} style={isFullscreen?{height:"100vh"}:undefined}>
+
+        {/* Canvas - right side like Image 1, fullscreen like Image 2 */}
+        <div ref={canvasWrapRef} className={"relative flex flex-1 overflow-hidden bg-[#040709] "+(isFullscreen ? "fixed inset-0 z-30 rounded-none border-0" : "rounded-none lg:rounded-2xl border-0 lg:border border-white/10")} style={isFullscreen?{height:"100vh"}:undefined}>
           <RoadtripCanvas distRef={distRef} distRenderRef={distRenderRef} seed={seed} progress={progress} isRunningRef={isRunningRef} isPausedRef={isPausedRef} pausedOffRef={pausedOffRef} />
-          <div className={"absolute left-1/2 top-3.5 z-10 -translate-x-1/2 "+(!controlsVisible && isFullscreen ? "opacity-0 pointer-events-none" : "")}>
-            <div className="flex items-center gap-2.5 rounded-full border border-white/10 bg-[rgba(28,30,34,0.72)] px-3.5 py-1.5 text-xs backdrop-blur-xl"><b className="max-w-[260px] truncate">{intent || "No intent — set one"}</b><span className="text-[#7a8a7a]">· {routeName} · {Math.round(distRenderRef.current/42)} km</span></div>
+          {/* Top pill - fullscreen shows "No intent ..." like Image 2, windowed shows intent */}
+          <div className={"absolute left-1/2 z-10 -translate-x-1/2 "+(isFullscreen ? "top-3" : "top-3 hidden lg:flex")+" "+(!controlsVisible && isFullscreen ? "opacity-0 pointer-events-none" : "")}>
+            <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-[#1A1E23]/90 px-3 py-1.5 text-xs backdrop-blur-xl">
+              <b className="text-white text-[11px]">{intent || "No intent"}</b>
+              <span className="text-zinc-500 text-[11px]">· {routeName} · {routeMin}m · {km} km</span>
+            </div>
           </div>
-          <div className={"absolute bottom-[18px] right-4 z-10 flex flex-col items-center gap-2 rounded-[22px] border border-white/10 bg-[rgba(28,30,34,0.72)] p-2 backdrop-blur-xl "+(!controlsVisible && isFullscreen ? "opacity-0 pointer-events-none" : "")}>
-            {ControlButton}
-            {(isRunning || remaining!==total) && <button onClick={handleReset} className="grid h-9 w-9 place-items-center rounded-full border border-white/10 text-xs">R</button>}
-            <div className="h-px w-5 bg-white/10" />
-            <div className="font-mono text-[11px] font-bold tabular-nums">{fmt(remaining)}</div>
-          </div>
-          {!isFullscreen ? <button onClick={enterFS} className="absolute bottom-3.5 right-3.5 z-10 grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-[rgba(28,30,34,0.68)]">FS</button> : <button onClick={exitFS} className="absolute bottom-3.5 right-3.5 z-10 grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-[rgba(28,30,34,0.68)]">X</button>}
+          {/* Windowed: no extra controls (sidebar has them). Fullscreen: right vertical dock like Image 2 */}
+          {isFullscreen && (
+            <div className={"absolute right-3 top-1/2 z-10 flex -translate-y-1/2 flex-col items-center gap-2 rounded-2xl border border-white/10 bg-[#1A1E23]/90 p-2 backdrop-blur-xl "+(!controlsVisible ? "opacity-0 pointer-events-none" : "")}>
+              <button onClick={()=> isRunning ? handlePauseToggle() : handleHitRoad()} className="grid h-10 w-10 place-items-center rounded-full bg-[#00E69A] text-[#00140e] text-sm">{isRunning ? (isPaused ? "▶" : "❚❚") : "▶"}</button>
+              <button onClick={handleReset} className="grid h-8 w-8 place-items-center rounded-full bg-white/10 text-zinc-400 text-xs">↻</button>
+              <div className="text-[9px] font-mono font-bold text-zinc-400 tabular-nums">{fmt(remaining)} · {pct}%</div>
+              <button onClick={exitFS} className="grid h-8 w-8 place-items-center rounded-full bg-white/10 text-zinc-300">⛶</button>
+            </div>
+          )}
+          {/* Windowed fullscreen button bottom-right like Image 1 */}
+          {!isFullscreen && (
+            <button onClick={enterFS} className="absolute bottom-3 right-3 z-10 grid h-8 w-8 place-items-center rounded-full border border-white/10 bg-[#1A1E23]/80 text-zinc-400 backdrop-blur-xl hover:bg-[#1A1E23] text-xs">⛶</button>
+          )}
+          {isFullscreen && (
+            <button onClick={exitFS} className="absolute bottom-3 right-3 z-10 hidden h-8 w-8 place-items-center rounded-full border border-white/10 bg-[#1A1E23]/80 text-zinc-400 lg:grid">⛶</button>
+          )}
+          {/* Bottom progress bar in fullscreen like Image 2 */}
+          {isFullscreen && (
+            <div className="absolute bottom-4 left-1/2 z-10 w-[min(520px,70vw)] -translate-x-1/2 rounded-full border border-white/10 bg-[#1A1E23]/90 p-1.5 backdrop-blur-xl">
+              <div className="h-1.5 overflow-hidden rounded-full bg-black"><div className="h-full rounded-full bg-[#00E69A]" style={{ width: `${pct}%` }} /></div>
+            </div>
+          )}
+          {/* Car is drawn on canvas - bottom center */}
           {showDone && doneInfo && (
-            <div className="absolute right-4 top-4 z-20 w-[340px] rounded-xl border border-white/10 bg-[rgba(15,20,25,0.96)] p-3 shadow-2xl backdrop-blur-xl">
-              <div className="text-sm font-bold">Journey completed</div>
-              <div className="text-xs text-[#7a8a7a]">{String((doneInfo as Record<string,unknown>).route??routeName)} · {String((doneInfo as Record<string,unknown>).duration_min??"")}m · {String((doneInfo as Record<string,unknown>).km??"")} km</div>
-              <div className="mt-1 truncate text-xs">{String((doneInfo as Record<string,unknown>).intent??intent)}</div>
-              <div className="mt-2 flex gap-2"><button onClick={()=>setShowLog(true)} className="rounded-full border border-white/10 px-3 py-1 text-xs">Trip Log</button><button onClick={()=>setShowDone(false)} className="rounded-full bg-[#10B981] px-3 py-1 text-xs text-[#00140e]">Dismiss</button></div>
+            <div className="absolute right-4 top-4 z-20 w-[340px] rounded-xl border border-white/10 bg-[#1A1E23] p-3 shadow-2xl">
+              <div className="text-sm font-bold text-white">Journey completed</div>
+              <div className="text-xs text-zinc-500">{String((doneInfo as Record<string,unknown>).route??routeName)} · {String((doneInfo as Record<string,unknown>).duration_min??"")}m · {String((doneInfo as Record<string,unknown>).km??"")} km</div>
+              <div className="mt-1 truncate text-xs text-zinc-300">{String((doneInfo as Record<string,unknown>).intent??intent)}</div>
+              <div className="mt-2 flex gap-2"><button onClick={()=>setShowLog(true)} className="rounded-full border border-white/10 px-3 py-1 text-xs text-zinc-300">Trip Log</button><button onClick={()=>setShowDone(false)} className="rounded-full bg-[#00E69A] px-3 py-1 text-xs font-bold text-[#00140e]">Dismiss</button></div>
             </div>
           )}
         </div>
       </div>
       {showLog && (
-        <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/45 p-4 backdrop-blur-[8px]" onClick={e=>{ if(e.target===e.currentTarget) setShowLog(false); }}>
-          <div className="flex max-h-[72vh] w-[min(640px,92vw)] flex-col overflow-hidden rounded-2xl border border-white/10 bg-[rgba(28,30,34,0.88)] backdrop-blur-xl">
-            <div className="flex items-center justify-between border-b border-white/10 p-3.5"><h2 className="text-sm font-extrabold tracking-[0.8px] text-[#10B981]">Trip Log</h2><div className="flex items-center gap-2 text-[11px] text-[#7a8a7a]"><span>{logRows.length} trips</span><button onClick={()=>setShowLog(false)} className="rounded-full border border-white/10 px-3 py-1">Close</button></div></div>
-            <div className="flex-1 overflow-auto"><table className="w-full border-collapse text-xs"><thead className="sticky top-0 bg-[rgba(20,23,27,0.96)] text-[10px] uppercase tracking-[0.6px] text-[#7a8a7a]"><tr><th className="p-2 text-left">Date</th><th className="p-2 text-left">Route</th><th className="p-2 text-left">Min</th><th className="p-2 text-left">Intent</th><th className="p-2 text-left">Done</th></tr></thead><tbody>{logRows.map((r,i)=><tr key={String(r.finished_at??i)} className="border-b border-white/5 hover:bg-white/5"><td className="p-2">{String(r.finished_at??"").slice(0,16).replace("T"," ")}</td><td className="p-2">{String(r.route??"")}</td><td className="p-2">{String(r.duration_min??"")}</td><td className="max-w-[200px] truncate p-2">{String(r.intent??"")}</td><td className="p-2">{(r.completed as boolean)?"✓":"—"}</td></tr>)}{!logRows.length && <tr><td colSpan={5} className="p-8 text-center italic text-[#7a8a7a]">No trips yet</td></tr>}</tbody></table></div>
-            <div className="flex items-center justify-between border-t border-white/10 p-3"><div className="flex gap-2"><button onClick={exportLogs} className="rounded-lg border border-white/10 bg-[#121212] px-3 py-1.5 text-xs font-bold">Export</button><button onClick={clearLogs} className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs font-bold text-red-400">Clear</button></div><button onClick={()=>setShowLog(false)} className="rounded-lg bg-[#10B981] px-3 py-1.5 text-xs font-bold text-[#00140e]">Done</button></div>
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-4 backdrop-blur-[8px]" onClick={e=>{ if(e.target===e.currentTarget) setShowLog(false); }}>
+          <div className="flex max-h-[72vh] w-[min(640px,92vw)] flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#1A1E23] shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/10 p-4"><h2 className="text-sm font-extrabold tracking-[0.8px] text-[#00E69A]">Trip Log</h2><div className="flex items-center gap-2 text-[11px] text-zinc-500"><span>{logRows.length} trips</span><button onClick={()=>setShowLog(false)} className="rounded-full border border-white/10 px-3 py-1 text-zinc-300">Close</button></div></div>
+            <div className="flex-1 overflow-auto"><table className="w-full border-collapse text-xs"><thead className="sticky top-0 bg-[#1A1E23] text-[10px] uppercase tracking-[0.6px] text-zinc-500"><tr><th className="p-2 text-left">Date</th><th className="p-2 text-left">Route</th><th className="p-2 text-left">Min</th><th className="p-2 text-left">Intent</th><th className="p-2 text-left">Done</th></tr></thead><tbody>{logRows.map((r,i)=><tr key={String(r.finished_at??i)} className="border-b border-white/5 hover:bg-white/[0.03]"><td className="p-2 text-zinc-300">{String(r.finished_at??"").slice(0,16).replace("T"," ")}</td><td className="p-2 text-white">{String(r.route??"")}</td><td className="p-2 text-white">{String(r.duration_min??"")}</td><td className="max-w-[200px] truncate p-2 text-zinc-400">{String(r.intent??"")}</td><td className="p-2">{(r.completed as boolean)?"✓":"—"}</td></tr>)}{!logRows.length && <tr><td colSpan={5} className="p-8 text-center italic text-zinc-600">No trips yet</td></tr>}</tbody></table></div>
+            <div className="flex items-center justify-between border-t border-white/10 p-3"><div className="flex gap-2"><button onClick={exportLogs} className="rounded-lg border border-white/10 bg-black px-3 py-1.5 text-xs font-bold text-white">Export</button><button onClick={clearLogs} className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs font-bold text-red-400">Clear</button></div><button onClick={()=>setShowLog(false)} className="rounded-lg bg-[#00E69A] px-3 py-1.5 text-xs font-bold text-[#00140e]">Done</button></div>
           </div>
         </div>
       )}
