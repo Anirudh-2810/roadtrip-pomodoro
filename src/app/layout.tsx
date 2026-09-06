@@ -30,7 +30,15 @@ export const metadata: Metadata = {
   metadataBase: getBaseUrl(),
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export const dynamic = "force-dynamic";
+
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  let user: { email?: string | null } | null = null;
+  try {
+    const { getUser } = await import("@/lib/supabase/server");
+    user = await getUser();
+  } catch {}
+  const email = user?.email ?? null;
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-[#09090B] text-white">
@@ -48,12 +56,28 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <a href="/settings" className="rounded-full px-3 py-1.5 text-xs text-zinc-400 hover:bg-white/10 hover:text-white">
                 Settings
               </a>
-              <a href="/login" className="rounded-full bg-white px-4 py-1.5 text-xs font-medium text-black hover:bg-zinc-200">
-                Log in
-              </a>
-              <a href="/signup" className="rounded-full border border-white/10 px-4 py-1.5 text-xs font-medium text-white hover:bg-white/10">
-                Sign up
-              </a>
+              {email ? (
+                <>
+                  <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-300">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> {email}
+                  </span>
+                  <span className="sm:hidden rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-300">● signed in</span>
+                  <form action="/api/auth/logout" method="post" className="inline">
+                    <button type="submit" className="rounded-full bg-white px-4 py-1.5 text-xs font-medium text-black hover:bg-zinc-200">
+                      Log out
+                    </button>
+                  </form>
+                </>
+              ) : (
+                <>
+                  <a href="/login" className="rounded-full bg-white px-4 py-1.5 text-xs font-medium text-black hover:bg-zinc-200">
+                    Log in
+                  </a>
+                  <a href="/signup" className="rounded-full border border-white/10 px-4 py-1.5 text-xs font-medium text-white hover:bg-white/10">
+                    Sign up
+                  </a>
+                </>
+              )}
             </nav>
           </div>
         </header>

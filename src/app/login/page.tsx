@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSchema } from "@/lib/validation";
@@ -10,9 +11,12 @@ import { Button } from "@/components/ui/button";
 type Form = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
+  const router = useRouter();
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<Form>({ resolver: zodResolver(loginSchema) });
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [loggedEmail, setLoggedEmail] = useState<string>("");
 
   const onSubmit = async (data: Form) => {
     setErr(null); setMsg(null);
@@ -20,8 +24,12 @@ export default function LoginPage() {
       const res = await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
       const j = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(j.error ?? "Login failed");
-      setMsg("Logged in — redirecting to dashboard…");
-      window.location.href = "/dashboard";
+      setLoggedEmail(data.email);
+      setShowSuccess(true);
+      setMsg(null);
+      // refresh server components so layout/page see auth cookies
+      router.refresh();
+      setTimeout(()=> { router.push("/"); router.refresh(); }, 1200);
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     }
@@ -29,6 +37,20 @@ export default function LoginPage() {
 
   return (
     <div className="mx-auto max-w-md px-4 py-10">
+      {showSuccess && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={()=> setShowSuccess(false)}>
+          <div onClick={e=> e.stopPropagation()} className="w-full max-w-sm rounded-2xl border border-emerald-500/20 bg-[#1A1E23] p-6 text-center shadow-2xl">
+            <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-emerald-500/15 text-emerald-400 text-xl">✓</div>
+            <h3 className="mt-3 text-lg font-bold text-white">Logged in successfully</h3>
+            <p className="mt-1 text-sm text-zinc-400">Welcome back — <b className="text-white">{loggedEmail}</b></p>
+            <p className="mt-2 text-xs text-zinc-500">Redirecting to your road…</p>
+            <div className="mt-4 flex gap-2">
+              <button onClick={()=> { router.push("/"); router.refresh(); }} className="flex-1 rounded-full bg-[#00E69A] py-2 text-sm font-bold text-[#00140e]">Hit the road →</button>
+              <button onClick={()=> setShowSuccess(false)} className="rounded-full border border-white/10 px-4 py-2 text-sm text-zinc-400">Stay</button>
+            </div>
+          </div>
+        </div>
+      )}
       <h1 className="text-2xl font-semibold tracking-tight">Log in</h1>
       <p className="mt-1 text-sm text-zinc-500">Welcome back. Or <a href="/" className="text-emerald-400 hover:underline">continue without signup →</a></p>
       <form onSubmit={handleSubmit(onSubmit)} className="mt-6 space-y-3">

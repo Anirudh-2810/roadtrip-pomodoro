@@ -423,6 +423,17 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
                   <option value="brown">Brown</option><option value="pink">Pink</option><option value="white">White</option><option value="rain">Rain</option>
                 </select>
               </div>
+              {userEmail ? (
+                <div className="flex items-center justify-between rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-[11px]">
+                  <span className="flex items-center gap-1.5 text-emerald-300"><span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> Signed in as {userEmail}</span>
+                  <a href="/dashboard" className="text-emerald-400 hover:text-emerald-300">Dashboard →</a>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px]">
+                  <span className="text-zinc-400">Guest · Sync to save & email</span>
+                  <a href="/signup" className="rounded-full bg-white px-3 py-1 text-xs font-medium text-black hover:bg-zinc-200">Sync →</a>
+                </div>
+              )}
               {/* Quick pills */}
               <div className="flex gap-1.5 justify-center">
                 {[25,50,90].map(m=> (
