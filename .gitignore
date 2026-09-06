@@ -48,3 +48,6 @@ __pycache__/
 *.bak-*
 index.html.bak*
 roadtrip_*.bak*
+
+.vercel
+.env*

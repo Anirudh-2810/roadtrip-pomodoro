@@ -29,10 +29,22 @@ export async function POST(req: NextRequest) {
 
   try {
     const supabase = await createClient();
+    const raw = process.env.NEXT_PUBLIC_APP_URL?.trim();
+    let appUrl: string;
+    if (raw) {
+      try {
+        // validate URL, strip trailing slash
+        appUrl = new URL(raw).toString().replace(/\/$/, "");
+      } catch {
+        appUrl = "http://localhost:3000";
+      }
+    } else {
+      appUrl = "http://localhost:3000";
+    }
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: { emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/dashboard` },
+      options: { emailRedirectTo: `${appUrl}/auth/callback?next=/dashboard` },
     });
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
     const csrf = generateCsrfToken(process.env.CSRF_SECRET ?? process.env.AUTH_SECRET);
