@@ -12,10 +12,22 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+function getBaseUrl(): URL {
+  const raw = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  if (raw) {
+    try {
+      return new URL(raw);
+    } catch {
+      // fall through to localhost if env is malformed (e.g. empty or invalid)
+    }
+  }
+  return new URL("http://localhost:3000");
+}
+
 export const metadata: Metadata = {
   title: "Roadtrip Pomodoro — Focus timer with email",
   description: "Production Pomodoro timer — Vercel + Supabase + Resend. Auto-email per session + daily/weekly digest. Continue without signup.",
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),
+  metadataBase: getBaseUrl(),
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
