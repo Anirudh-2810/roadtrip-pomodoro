@@ -1,16 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, getUser } from "@/lib/supabase/server";
 import { sessionSchema } from "@/lib/validation";
-import { rateLimit } from "@/lib/rate-limit";
+import { rateLimitAsync } from "@/lib/rate-limit";
+import { getClientIp, readJsonWithLimit, jsonError } from "@/lib/security";
+import { checkCsrf } from "@/lib/csrf";
 
 export async function POST(req: NextRequest) {
+  // body size guard
+  if ((req.headers.get("content-length") && Number(req.headers.get("content-length")) > 8 * 1024) || req.headers.get("content-type")?.includes("application/json") === false) {
+    // allow missing content-type for compat, but still limit
+  }
   const user = await getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized — log in or continue as guest" }, { status: 401 });
 
-  const rl = rateLimit(`sessions:${user.id}`, 60, 60 * 1000);
-  if (!rl.ok) return NextResponse.json({ error: "Rate limited" }, { status: 429 });
+  const ip = getClientIp(req);
+  const rl = await rateLimitAsync(`sessions:${user.id}:${ip}`, 60, 60 * 1000);
+  if (!rl.ok) return NextResponse.json({ error: "Rate limited" }, { status: 429, headers: { "Retry-After": String(Math.ceil((rl.reset - Date.now()) / 1000)) } });
 
-  const body = await req.json().catch(() => null);
+  // CSRF double-submit for state-changing
+  const cookieCsrf = req.cookies.get("__Host-csrf")?.value ?? null;
+  if (cookieCsrf && !checkCsrf(req, cookieCsrf)) {
+    return NextResponse.json({ error: "Invalid CSRF token" }, { status: 403 });
+  }
+
+  let body: unknown;
+  try {
+    body = await readJsonWithLimit(req, 8 * 1024);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Invalid JSON";
+    return NextResponse.json({ error: msg }, { status: msg === "Payload too large" ? 413 : 400 });
+  }
   const parsed = sessionSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid session" }, { status: 400 });
 

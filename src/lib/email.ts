@@ -36,12 +36,13 @@ export async function sendSessionEmail(opts: {
             <strong style="color:#10b981;">${mins}m</strong> <span style="color:#fafafa;">· ${escapeHtml(opts.preset)}</span> <span style="color:#71717a;">· ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}</span>
           </div>
           <p style="margin:16px 0 0; font-size:12px; color:#71717a;">You're receiving this because you enabled auto-email per Pomodoro. Disable in Settings → Email Preferences.</p>
-          <p style="margin:8px 0 0; font-size:12px; color:#71717a;"><a href="${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/settings" style="color:#10b981;">Manage preferences</a> · <a href="#" style="color:#71717a;">Unsubscribe</a></p>
+          <p style="margin:8px 0 0; font-size:12px; color:#71717a;"><a href="${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/settings" style="color:#10b981;">Manage preferences</a> · <a href="${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/api/email/unsubscribe" style="color:#71717a;">Unsubscribe</a></p>
         </div>
       `,
       text: `${subject}\n${mins}m · ${opts.preset} · ${opts.intent ?? ""}\n${new Date().toISOString()}`,
       headers: {
         "List-Unsubscribe": `<${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/api/email/unsubscribe>`,
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
       },
     });
     if (error) return { error: error.message ?? String(error) };

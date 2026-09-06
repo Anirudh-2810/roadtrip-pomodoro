@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
+import { healthEnv } from "@/lib/env";
 
 export async function GET() {
-  const supabaseOk = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
-  const resendOk = Boolean(process.env.RESEND_API_KEY);
+  const h = healthEnv();
   return NextResponse.json({
     ok: true,
-    supabase: supabaseOk ? "configured" : "missing env",
-    email: resendOk ? "configured" : "missing RESEND_API_KEY",
+    supabase: h.supabase ? "configured" : "missing env",
+    email: h.resend ? "configured" : "missing RESEND_API_KEY",
+    redis: h.redis ? "configured" : "in-memory fallback",
     time: new Date().toISOString(),
   });
 }

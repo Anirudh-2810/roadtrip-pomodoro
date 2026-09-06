@@ -1,9 +1,11 @@
 import { getUser } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 
 export default async function SettingsPage() {
   const user = await getUser();
   if (!user) redirect("/login");
+  const csrf = (await cookies()).get("__Host-csrf")?.value ?? "";
 
   let prefs: { daily_enabled: boolean; daily_time: string; weekly_enabled: boolean; weekly_dow: number } | null = null;
   try {
@@ -44,6 +46,7 @@ export default async function SettingsPage() {
           <span className="text-zinc-500">Sunday 09:00 IST</span>
         </label>
         <input type="hidden" name="weekly_dow" value="0" />
+        <input type="hidden" name="_csrf" value={csrf} />
         <button type="submit" className="w-full rounded-full bg-white py-2.5 text-sm font-medium text-black hover:bg-zinc-200">
           Save preferences
         </button>
