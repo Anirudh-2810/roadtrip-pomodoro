@@ -134,23 +134,27 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
     const blob=new Blob([header+body+"\n"],{type:"text/markdown"}); const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=`roadtrip-log-${new Date().toISOString().slice(0,10)}.md`; a.click(); URL.revokeObjectURL(url);
   };
 
-  // --- Custom live sync: typing 1 or 1:30 immediately updates timer ---
+  // --- Custom live sync: typing 1 or 1:30 updates timer — allow when paused, block while running/building ---
   const handleCustomChange = (v: string) => {
     setCustomMin(v);
     const raw = v.trim();
-    if (!raw) {
-      // empty: keep current timer as is, no reset
-      return;
-    }
+    if (!raw) return;
     const t = parsePreset(raw);
-    if (t !== null) {
-      // valid: sync to Custom 1:00 / 01:30 etc
-      setRouteName("Custom");
-      setRouteMin(t/60);
-      setTotal(t);
-      setRemaining(t);
+    if (t === null) return;
+    // block while actively running (not paused) or building
+    if ((isRunning && !isPaused) || isBuilding) return;
+    setRouteName("Custom");
+    setRouteMin(t/60);
+    setTotal(t);
+    setRemaining(t);
+    // if paused, reset elapsed so resume starts from new total
+    if (isPaused) {
+      t0Ref.current = performance.now();
+      pausedRef.current = 0;
+      pausedAt.current = performance.now();
+      distRef.current = 0;
+      distRenderRef.current = 0;
     }
-    // invalid: leave timer on previous value
   };
 
   // --- 5s varied building phase for every start ---
@@ -380,10 +384,13 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
                   );
                 })}
                 <div className="pt-1">
-                  <input value={customMin} onChange={e=>handleCustomChange(e.target.value)} placeholder="Custom minutes or mm:ss (e.g. 1 or 1:30)" className="w-full rounded-full border border-white/10 bg-[#1A1E23] px-3.5 py-2 text-xs text-white outline-none placeholder:text-zinc-600 focus:border-[#00E69A]/40" />
-                  {customMin.trim() && parsePreset(customMin.trim())===null && (
+                  <input value={customMin} onChange={e=>handleCustomChange(e.target.value)} placeholder="Custom minutes or mm:ss (e.g. 1 or 1:30)" disabled={(isRunning && !isPaused) || isBuilding} className="w-full rounded-full border border-white/10 bg-[#1A1E23] px-3.5 py-2 text-xs text-white outline-none placeholder:text-zinc-600 focus:border-[#00E69A]/40 disabled:opacity-50 disabled:cursor-not-allowed" />
+                  {customMin.trim() && parsePreset(customMin.trim())===null && !((isRunning && !isPaused) || isBuilding) && (
                     <div className="mt-1 px-2 text-[10px] text-amber-400">Enter 1–180 or mm:ss (e.g. 1:30)</div>
                   )}
+                  {(isRunning && !isPaused) || isBuilding ? (
+                    <div className="mt-1 px-2 text-[10px] text-zinc-500">Custom locked while running — pause to edit</div>
+                  ) : null}
                 </div>
               </div>
             ) : (
@@ -439,7 +446,7 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
                 {[25,50,90].map(m=> (
                   <button key={m} onClick={()=>{ if(isRunning || isBuilding) return; const r=ROUTES.find(x=>x.mins===m); if(r){ setCustomMin(""); setRouteName(r.name); setRouteMin(r.mins); setTotal(r.mins*60); setRemaining(r.mins*60); }}} className={"rounded-full px-3 py-1 text-xs font-bold border "+(routeMin===m && !customMin ? "bg-[#00E69A] border-[#00E69A] text-[#00140e]" : "bg-[#1A1E23] border-white/10 text-zinc-400")}>{m}m</button>
                 ))}
-                <button onClick={()=>{ const v=prompt("Custom minutes (1-180) or mm:ss"); if(v){ handleCustomChange(v); } }} className={"rounded-full px-3 py-1 text-xs font-bold border "+(routeName==="Custom" ? "bg-[#00E69A] border-[#00E69A] text-[#00140e]" : "bg-[#1A1E23] border-white/10 text-zinc-400")}>Custom</button>
+                <button onClick={()=>{ if((isRunning && !isPaused) || isBuilding) return; const v=prompt("Custom minutes (1-180) or mm:ss"); if(v){ handleCustomChange(v); } }} disabled={(isRunning && !isPaused) || isBuilding} className={"rounded-full px-3 py-1 text-xs font-bold border disabled:opacity-50 disabled:cursor-not-allowed "+(routeName==="Custom" ? "bg-[#00E69A] border-[#00E69A] text-[#00140e]" : "bg-[#1A1E23] border-white/10 text-zinc-400")}>Custom</button>
               </div>
               <div className="text-center text-[11px] italic text-zinc-600">“Deep work now, freedom later”</div>
             </div>
