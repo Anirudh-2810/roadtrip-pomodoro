@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import RoadtripCanvas from "./RoadtripCanvas";
 import { ensureRoadtripAudio, setRoadtripVol } from "@/lib/audio-roadtrip";
 import { saveGuestSession } from "@/lib/guest";
+import { parsePreset } from "@/lib/validation";
 
 type NoiseKind = "brown" | "pink" | "white" | "rain";
 const ROUTES: Array<{ name: string; mins: number; desc: string; order: string; km: string }> = [
@@ -36,6 +37,9 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
   const [sheetTab, setSheetTab] = useState<"onroad"|"delivered">("onroad");
   const [csrf, setCsrf] = useState<string|null>(null);
   const [customMin, setCustomMin] = useState("");
+  const [isBuilding, setIsBuilding] = useState(false);
+  const [buildStep, setBuildStep] = useState(0);
+  const [buildLines, setBuildLines] = useState<string[]>([]);
 
   const distRef = useRef(0);
   const distRenderRef = useRef(0);
@@ -48,6 +52,8 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
   const pausedAt = useRef<number|null>(null);
   const canvasWrapRef = useRef<HTMLDivElement|null>(null);
   const hideTimerRef = useRef<number|null>(null);
+  const buildingTimerRef = useRef<number|null>(null);
+  const lastBuildRef = useRef<string>("");
   const progress = total ? (total-remaining)/total : 0;
 
   useEffect(()=>{ fetch("/api/csrf").then(r=>r.json()).then(j=>setCsrf(j.csrf as string)).catch(()=>{}); }, []);
@@ -108,19 +114,7 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
     if(isRunning && !isPaused) hideTimerRef.current= window.setTimeout(()=>setControlsVisible(false),3000) as unknown as number;
   },[isFullscreen,isRunning,isPaused]);
   useEffect(()=>{ if(isFullscreen && isRunning && !isPaused) resetHideTimer(); else if(isFullscreen){ setControlsVisible(true); if(hideTimerRef.current) window.clearTimeout(hideTimerRef.current); } return()=>{ if(hideTimerRef.current) window.clearTimeout(hideTimerRef.current); }; },[isFullscreen,isRunning,isPaused,resetHideTimer]);
-  useEffect(()=>{
-    const onKey=(e:KeyboardEvent)=>{
-      const tag=(document.activeElement?.tagName??"");
-      const inInput=tag==="INPUT"||tag==="SELECT"||tag==="TEXTAREA";
-      if(e.key==="Escape" && isFullscreen){ exitFS(); return; }
-      if(inInput) return;
-      if(e.key==="f"||e.key==="F"){ e.preventDefault(); if(isFullscreen) exitFS(); else enterFS(); return; }
-      if(e.code==="Space"||e.key===" "){ e.preventDefault(); if(!isRunning) handleHitRoad(); else handlePauseToggle(); return; }
-      if(e.key==="r"||e.key==="R"){ e.preventDefault(); handleReset(); return; }
-      if(e.key==="m"||e.key==="M"){ e.preventDefault(); setHumOn(v=>!v); return; }
-    };
-    document.addEventListener("keydown",onKey); return()=>document.removeEventListener("keydown",onKey);
-  },[isFullscreen,isRunning,isPaused]);
+  // placeholder - actual onKey effect moved after handlers to avoid forward refs
 
   const loadLogs=useCallback(()=>{
     try{
@@ -139,6 +133,105 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
     const body=rows.map(r=> `| ${(String(r.finished_at)||"").slice(0,16).replace("T"," ")} | ${String(r.route??"")} | ${Number(r.duration_min??0)} | ${String(r.intent??"").replace(/\|/g,"/").slice(0,60)} | ${(r.completed?"✓":"—")} |`).join("\n");
     const blob=new Blob([header+body+"\n"],{type:"text/markdown"}); const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=`roadtrip-log-${new Date().toISOString().slice(0,10)}.md`; a.click(); URL.revokeObjectURL(url);
   };
+
+  // --- Custom live sync: typing 1 or 1:30 immediately updates timer ---
+  const handleCustomChange = (v: string) => {
+    setCustomMin(v);
+    const raw = v.trim();
+    if (!raw) {
+      // empty: keep current timer as is, no reset
+      return;
+    }
+    const t = parsePreset(raw);
+    if (t !== null) {
+      // valid: sync to Custom 1:00 / 01:30 etc
+      setRouteName("Custom");
+      setRouteMin(t/60);
+      setTotal(t);
+      setRemaining(t);
+    }
+    // invalid: leave timer on previous value
+  };
+
+  // --- 5s varied building phase for every start ---
+  const BUILD_POOL_0 = ["Charting the road...", "Plotting the route...", "Mapping the miles...", "Scouting the highway..."] as const;
+  const BUILD_POOL_1 = ["Optimizing for focus...", "Clearing the lane...", "Tuning the engine...", "Calibrating the cruise..."] as const;
+  const BUILD_POOL_2_BASE = ["Locking in intent...", "Committing to finish...", "Fueling dedication...", "Earning the miles...", "Sealing the promise..."] as const;
+
+  const pick = <T,>(arr: readonly T[], exclude?: string): T => {
+    const filtered = exclude ? (arr as readonly string[]).filter(x=>x!==exclude) as unknown as readonly T[] : arr;
+    const pool = filtered.length ? filtered : arr;
+    return pool[Math.floor(Math.random()*pool.length)];
+  };
+
+  const doStart = useCallback(()=>{
+    // called after 5s build
+    setIsBuilding(false);
+    setBuildStep(0);
+    setBuildLines([]);
+    startedAtRef.current=new Date().toISOString();
+    setIsRunning(true);
+    setIsPaused(false);
+    setSeed(Math.random());
+    dismissCover();
+  },[dismissCover]);
+
+  const startBuild = useCallback(()=>{
+    if(isRunning || isBuilding) return;
+    // ensure current total is valid (custom already live-synced, but re-parse to be safe)
+    let t = total;
+    const raw = customMin.trim();
+    if(raw){
+      const parsed = parsePreset(raw);
+      if(parsed !== null) t = parsed;
+    }
+    if(t<60||t>10800) return;
+    // ensure state reflects t (in case user hit Go with valid custom that hasn't synced due to race)
+    if(t!==total){
+      setRouteName("Custom");
+      setRouteMin(t/60);
+      setTotal(t);
+      setRemaining(t);
+    }
+    // pick 3 varied lines
+    const a = pick(BUILD_POOL_0, lastBuildRef.current.split("|")[0]);
+    const b = pick(BUILD_POOL_1, lastBuildRef.current.split("|")[1]);
+    let cBase: string = pick(BUILD_POOL_2_BASE, lastBuildRef.current.split("|")[2]);
+    // 30% inject intent
+    if(intent.trim() && Math.random()<0.3){
+      cBase = `Heading for "${intent.trim().slice(0,28)}" — ${cBase.toLowerCase()}`;
+    }
+    const lines = [a,b,cBase];
+    lastBuildRef.current = lines.join("|");
+    setBuildLines(lines);
+    setBuildStep(0);
+    setIsBuilding(true);
+    // schedule steps: 0 0-1.5s, 1 1.5-3s, 2 3-4.5s, 3 Ready 4.5-5s
+    if(buildingTimerRef.current) window.clearTimeout(buildingTimerRef.current);
+    const t1 = window.setTimeout(()=> setBuildStep(1), 1500);
+    const t2 = window.setTimeout(()=> setBuildStep(2), 3000);
+    const t3 = window.setTimeout(()=> setBuildStep(3), 4500);
+    const t4 = window.setTimeout(()=> { doStart(); }, 5000);
+    // store last for cleanup; keep chain by reusing buildingTimerRef as final
+    buildingTimerRef.current = t4 as unknown as number;
+    // also need to clear intermediate on unmount/cancel
+    // stash t1-t3 on same ref via array? simply clear all on cancel
+    (buildingTimerRef as unknown as { _t1:number; _t2:number; _t3:number })._t1 = t1 as unknown as number;
+    (buildingTimerRef as unknown as { _t1:number; _t2:number; _t3:number })._t2 = t2 as unknown as number;
+    (buildingTimerRef as unknown as { _t1:number; _t2:number; _t3:number })._t3 = t3 as unknown as number;
+  },[isRunning,isBuilding,total,customMin,intent,doStart]);
+
+  const cancelBuild = useCallback(()=>{
+    if(!isBuilding) return;
+    setIsBuilding(false);
+    setBuildStep(0);
+    setBuildLines([]);
+    if(buildingTimerRef.current) window.clearTimeout(buildingTimerRef.current);
+    const r = buildingTimerRef as unknown as { _t1?:number; _t2?:number; _t3?:number };
+    if(r._t1) window.clearTimeout(r._t1);
+    if(r._t2) window.clearTimeout(r._t2);
+    if(r._t3) window.clearTimeout(r._t3);
+  },[isBuilding]);
 
   const onFinish=useCallback(async()=>{
     const startedAt=startedAtRef.current||new Date().toISOString();
@@ -184,19 +277,9 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
   useEffect(()=>{ if(isRunning && !isPaused && remaining===total){ t0Ref.current=performance.now(); pausedRef.current=0; distRef.current=0; distRenderRef.current=0; } },[isRunning,isPaused,remaining,total]);
 
   const handleHitRoad=useCallback(()=>{
-    if(isRunning) return;
-    let t=routeMin*60;
-    if(customMin.trim()){
-      const m=parseInt(customMin.trim(),10);
-      if(!Number.isNaN(m) && m>=1 && m<=180) t=m*60;
-      else if(/^\d{1,3}:\d{2}$/.test(customMin.trim())){
-        const [mm,ss]=customMin.trim().split(":").map(Number);
-        if(ss<60) t=mm*60+ss;
-      }
-    }
-    if(t<60||t>10800) return;
-    setTotal(t); setRemaining(t); startedAtRef.current=new Date().toISOString(); setIsRunning(true); setIsPaused(false); setSeed(Math.random()); dismissCover();
-  },[isRunning,routeMin,customMin,dismissCover]);
+    if(isRunning || isBuilding) return;
+    startBuild();
+  },[isRunning,isBuilding,startBuild]);
   const handlePauseToggle=useCallback(()=>{ if(!isRunning) return; setIsPaused(p=>!p); },[isRunning]);
   const handleReset=useCallback(()=>{
     if(isRunning && remaining>0 && remaining<total){
@@ -206,9 +289,36 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
       const row={ started_at:data.started_at as string, finished_at:data.finished_at as string, duration_sec:elapsedMin*60, preset:routeName, intent:intent||undefined, completed:false, route:routeName };
       saveGuestSession(row as unknown as Parameters<typeof saveGuestSession>[0]);
     }
+    // cancel building if resetting during build
+    if(isBuilding) cancelBuild();
     setIsRunning(false); setIsPaused(false); setRemaining(routeMin*60); setTotal(routeMin*60); startedAtRef.current=null; distRef.current=0; distRenderRef.current=0;
     try{ localStorage.removeItem("rf_state"); }catch{}
-  },[isRunning,remaining,total,intent,routeName,humOn,routeMin,showLog,loadLogs]);
+  },[isRunning,remaining,total,intent,routeName,humOn,routeMin,showLog,loadLogs,isBuilding,cancelBuild]);
+
+  useEffect(()=>{
+    const onKey=(e:KeyboardEvent)=>{
+      const tag=(document.activeElement?.tagName??"");
+      const inInput=tag==="INPUT"||tag==="SELECT"||tag==="TEXTAREA";
+      if(isBuilding && e.key==="Escape"){ e.preventDefault(); cancelBuild(); return; }
+      if(e.key==="Escape" && isFullscreen){ exitFS(); return; }
+      if(inInput && !isBuilding) return;
+      if(isBuilding) return;
+      if(e.key==="f"||e.key==="F"){ e.preventDefault(); if(isFullscreen) exitFS(); else enterFS(); return; }
+      if(e.code==="Space"||e.key===" "){ e.preventDefault(); if(!isRunning) handleHitRoad(); else handlePauseToggle(); return; }
+      if(e.key==="r"||e.key==="R"){ e.preventDefault(); handleReset(); return; }
+      if(e.key==="m"||e.key==="M"){ e.preventDefault(); setHumOn(v=>!v); return; }
+    };
+    document.addEventListener("keydown",onKey); return()=>document.removeEventListener("keydown",onKey);
+  },[isFullscreen,isRunning,isPaused,isBuilding,cancelBuild,handleHitRoad,handlePauseToggle,handleReset,enterFS,exitFS]);
+
+  // cleanup building timers on unmount
+  useEffect(()=> ()=> {
+    if(buildingTimerRef.current) window.clearTimeout(buildingTimerRef.current);
+    const r = buildingTimerRef as unknown as { _t1?:number; _t2?:number; _t3?:number };
+    if(r._t1) window.clearTimeout(r._t1);
+    if(r._t2) window.clearTimeout(r._t2);
+    if(r._t3) window.clearTimeout(r._t3);
+  },[]);
 
   const pct= total ? Math.round(((total-remaining)/total)*100) : 0;
   const km = (distRenderRef.current/42).toFixed(1);
@@ -258,9 +368,9 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
             {sheetTab==="onroad" ? (
               <div className="flex-1 overflow-auto px-2 pb-2 space-y-2">
                 {ROUTES.map(r=> {
-                  const active = routeName===r.name;
+                  const active = routeName===r.name && !customMin;
                   return (
-                    <button key={r.name} onClick={()=>{ if(isRunning) return; setRouteName(r.name); setRouteMin(r.mins); setTotal(r.mins*60); setRemaining(r.mins*60); }} className={"w-full text-left rounded-xl border p-3 transition "+(active ? "bg-[#00E69A]/10 border-[#00E69A]/30" : "bg-[#1A1E23] border-white/[0.06] hover:border-white/15")}>
+                    <button key={r.name} onClick={()=>{ if(isRunning || isBuilding) return; setCustomMin(""); setRouteName(r.name); setRouteMin(r.mins); setTotal(r.mins*60); setRemaining(r.mins*60); }} className={"w-full text-left rounded-xl border p-3 transition "+(active ? "bg-[#00E69A]/10 border-[#00E69A]/30" : "bg-[#1A1E23] border-white/[0.06] hover:border-white/15")}>
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-bold text-white">{r.name} → {r.mins}m</span>
                         <span className={"rounded-full px-2 py-0.5 text-[9px] font-extrabold tracking-wide "+(active ? "bg-[#00E69A] text-[#00140e]" : "bg-black border border-white/10 text-zinc-600")}>READY</span>
@@ -270,7 +380,10 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
                   );
                 })}
                 <div className="pt-1">
-                  <input value={customMin} onChange={e=>setCustomMin(e.target.value)} placeholder="Custom minutes or mm:ss" className="w-full rounded-full border border-white/10 bg-[#1A1E23] px-3.5 py-2 text-xs text-white outline-none placeholder:text-zinc-600" />
+                  <input value={customMin} onChange={e=>handleCustomChange(e.target.value)} placeholder="Custom minutes or mm:ss (e.g. 1 or 1:30)" className="w-full rounded-full border border-white/10 bg-[#1A1E23] px-3.5 py-2 text-xs text-white outline-none placeholder:text-zinc-600 focus:border-[#00E69A]/40" />
+                  {customMin.trim() && parsePreset(customMin.trim())===null && (
+                    <div className="mt-1 px-2 text-[10px] text-amber-400">Enter 1–180 or mm:ss (e.g. 1:30)</div>
+                  )}
                 </div>
               </div>
             ) : (
@@ -313,9 +426,9 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
               {/* Quick pills */}
               <div className="flex gap-1.5 justify-center">
                 {[25,50,90].map(m=> (
-                  <button key={m} onClick={()=>{ if(isRunning) return; const r=ROUTES.find(x=>x.mins===m); if(r){ setRouteName(r.name); setRouteMin(r.mins); setTotal(r.mins*60); setRemaining(r.mins*60); }}} className={"rounded-full px-3 py-1 text-xs font-bold border "+(routeMin===m && !customMin ? "bg-[#00E69A] border-[#00E69A] text-[#00140e]" : "bg-[#1A1E23] border-white/10 text-zinc-400")}>{m}m</button>
+                  <button key={m} onClick={()=>{ if(isRunning || isBuilding) return; const r=ROUTES.find(x=>x.mins===m); if(r){ setCustomMin(""); setRouteName(r.name); setRouteMin(r.mins); setTotal(r.mins*60); setRemaining(r.mins*60); }}} className={"rounded-full px-3 py-1 text-xs font-bold border "+(routeMin===m && !customMin ? "bg-[#00E69A] border-[#00E69A] text-[#00140e]" : "bg-[#1A1E23] border-white/10 text-zinc-400")}>{m}m</button>
                 ))}
-                <button onClick={()=>{ const v=prompt("Custom minutes (1-180) or mm:ss"); if(v){ setCustomMin(v); } }} className={"rounded-full px-3 py-1 text-xs font-bold border "+(customMin ? "bg-[#00E69A] border-[#00E69A] text-[#00140e]" : "bg-[#1A1E23] border-white/10 text-zinc-400")}>Custom</button>
+                <button onClick={()=>{ const v=prompt("Custom minutes (1-180) or mm:ss"); if(v){ handleCustomChange(v); } }} className={"rounded-full px-3 py-1 text-xs font-bold border "+(routeName==="Custom" ? "bg-[#00E69A] border-[#00E69A] text-[#00140e]" : "bg-[#1A1E23] border-white/10 text-zinc-400")}>Custom</button>
               </div>
               <div className="text-center text-[11px] italic text-zinc-600">“Deep work now, freedom later”</div>
             </div>
@@ -352,6 +465,22 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
           {isFullscreen && (
             <div className="absolute bottom-4 left-1/2 z-10 w-[min(520px,70vw)] -translate-x-1/2 rounded-full border border-white/10 bg-[#1A1E23]/90 p-1.5 backdrop-blur-xl">
               <div className="h-1.5 overflow-hidden rounded-full bg-black"><div className="h-full rounded-full bg-[#00E69A]" style={{ width: `${pct}%` }} /></div>
+            </div>
+          )}
+          {/* 5s building dedication overlay - varied every start */}
+          {isBuilding && (
+            <div className="absolute inset-0 z-20 flex items-center justify-center bg-[#040709]/70 backdrop-blur-[4px] p-4">
+              <div className="w-[320px] rounded-2xl border border-white/10 bg-[#0F1215] p-6 text-center shadow-2xl">
+                <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-[#00E69A]/30 border-t-[#00E69A]" />
+                <div className="text-xs font-bold tracking-wide text-white min-h-[16px]">
+                  {buildStep < 3 ? buildLines[buildStep] ?? "Building your trip..." : "Ready to roll →"}
+                </div>
+                <div className="mt-1 text-[10px] text-zinc-500 truncate">{intent ? `“${intent.slice(0,40)}”` : `${routeName} · ${routeMin}m`} · {buildStep+1}/4</div>
+                <div className="mt-3 flex justify-center gap-1">
+                  {[0,1,2,3].map(i=> <div key={i} className={"h-1.5 w-8 rounded-full transition "+(i<=buildStep?"bg-[#00E69A]":"bg-white/10")} />)}
+                </div>
+                <button onClick={cancelBuild} className="mt-3 text-[11px] text-zinc-500 hover:text-zinc-300 underline">Cancel (Esc)</button>
+              </div>
             </div>
           )}
           {/* Car is drawn on canvas - bottom center */}
