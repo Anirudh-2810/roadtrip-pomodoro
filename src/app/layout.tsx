@@ -47,7 +47,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <a href="/" className="flex items-center gap-2">
               <span className="grid h-7 w-7 place-items-center rounded-lg bg-white text-black text-[11px] font-bold">◐</span>
               <span className="text-sm font-semibold tracking-tight">Roadtrip Pomodoro</span>
-              <span className="hidden sm:inline text-[11px] text-zinc-500">· production</span>
             </a>
             <nav className="flex items-center gap-1">
               <a href="/dashboard" className="rounded-full px-3 py-1.5 text-xs text-zinc-400 hover:bg-white/10 hover:text-white">
