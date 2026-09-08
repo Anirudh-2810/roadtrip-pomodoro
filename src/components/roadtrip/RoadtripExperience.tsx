@@ -266,7 +266,7 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
     if(userEmail){
       setSyncState("saving");
       const headers:Record<string,string>={"Content-Type":"application/json"}; if(csrf) headers["x-csrf-token"]=csrf;
-      fetch("/api/sessions",{method:"POST",headers,body:JSON.stringify(row)}).then(res=>{ if(res.ok){ removeGuestSession(startedAt); setSyncState("saved"); fetch("/api/email/session",{method:"POST",headers,body:JSON.stringify({to:userEmail, ...row})}).catch(()=>{}); } else setSyncState("failed"); }).catch(()=>setSyncState("failed"));
+      fetch("/api/sessions",{method:"POST",headers,body:JSON.stringify(row)}).then(async res=>{ let mocked=false; try{ mocked=(await res.json()).mocked===true; }catch{} if(res.ok && !mocked){ removeGuestSession(startedAt); setSyncState("saved"); fetch("/api/email/session",{method:"POST",headers,body:JSON.stringify({to:userEmail, ...row})}).catch(()=>{}); } else setSyncState("failed"); }).catch(()=>setSyncState("failed"));
     } else setSyncState("local");
     try{ if("Notification" in window && Notification.permission==="granted"){ const n=new Notification("Journey completed",{body:`${routeName} · ${elapsedMin} min — ${intent||"No intent"} · ${km} km`}); setTimeout(()=>n.close(),5000); } }catch{}
     try{ const Ctx=(window.AudioContext || (window as unknown as {webkitAudioContext:typeof AudioContext}).webkitAudioContext) as typeof AudioContext; const ctx2=new Ctx(); const o=ctx2.createOscillator(), g=ctx2.createGain(); o.type="sine"; o.frequency.value=880; o.connect(g).connect(ctx2.destination); g.gain.setValueAtTime(0,ctx2.currentTime); g.gain.linearRampToValueAtTime(0.18,ctx2.currentTime+0.02); g.gain.exponentialRampToValueAtTime(0.001,ctx2.currentTime+0.6); o.start(); o.stop(ctx2.currentTime+0.65); }catch{}
@@ -312,7 +312,7 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
       // incomplete rows also belong to the cloud (no email for breaks)
       if(userEmail){
         const headers:Record<string,string>={"Content-Type":"application/json"}; if(csrf) headers["x-csrf-token"]=csrf;
-        fetch("/api/sessions",{method:"POST",headers,body:JSON.stringify(row)}).then(res=>{ if(res.ok) removeGuestSession(row.started_at); }).catch(()=>{});
+        fetch("/api/sessions",{method:"POST",headers,body:JSON.stringify(row)}).then(async res=>{ try{ const j=await res.json(); if(res.ok && j.mocked!==true) removeGuestSession(row.started_at); }catch{} }).catch(()=>{});
       }
     }
     // cancel building if resetting during build

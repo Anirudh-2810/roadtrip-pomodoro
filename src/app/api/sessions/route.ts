@@ -33,9 +33,12 @@ export async function POST(req: NextRequest) {
   const parsed = sessionSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid session" }, { status: 400 });
 
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    // if no table, just ack — lets guest flow dev without supabase
-    return NextResponse.json({ ok: true, mocked: true });
+  // The insert below uses the anon client (owner RLS), so only URL + ANON_KEY
+  // are required — the service role key is NOT needed here. Never fake
+  // success: without them, fail loudly so the client shows "kept locally"
+  // instead of a false "saved to cloud".
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return NextResponse.json({ error: "Supabase not configured — trip kept locally" }, { status: 503 });
   }
 
   try {

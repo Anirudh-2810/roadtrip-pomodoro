@@ -56,7 +56,6 @@ export default async function DashboardPage() {
         {rows.length === 0 ? (
           <div className="p-6 text-center text-sm text-zinc-500">
             No sessions yet — <a href="/" className="text-emerald-400 hover:underline">hit the timer →</a>
-            <div className="mt-2 text-[11px]">If Supabase isn’t configured, add env vars then create tables via <code className="rounded bg-white/10 px-1">supabase/migrations/001_init.sql</code></div>
           </div>
         ) : (
           <div className="divide-y divide-white/5">

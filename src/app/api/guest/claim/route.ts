@@ -28,8 +28,10 @@ export async function POST(req: NextRequest) {
   const parsed = guestClaimSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid claim" }, { status: 400 });
 
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    return NextResponse.json({ ok: true, mocked: true, claimed: parsed.data.sessions.length });
+  // Claim inserts via the anon client (owner RLS) — URL + ANON_KEY are what
+  // matter. Fail loudly when missing so the client reports honestly.
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return NextResponse.json({ error: "Supabase not configured — guest sessions kept locally" }, { status: 503 });
   }
 
   try {
