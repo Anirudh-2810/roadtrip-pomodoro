@@ -56,8 +56,11 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
   const buildingTimerRef = useRef<number|null>(null);
   const lastBuildRef = useRef<string>("");
   // one-fire guard: the RAF tick can invoke onFinish on back-to-back frames
-  // with a stale `remaining` closure before React re-subscribes the effect
-  const finishedRunRef = useRef<string|null>(null);
+  // with a stale `remaining` closure before React re-subscribes the effect.
+  // Keyed on a stable per-run id (NOT startedAtRef — finish nulls that, which
+  // let the second fire mint a fresh timestamp and slip past the old guard).
+  const runIdRef = useRef(0);
+  const finishedRunRef = useRef<number|null>(null);
   const [syncState, setSyncState] = useState<"idle"|"saving"|"saved"|"local"|"failed">("idle");
   const progress = total ? (total-remaining)/total : 0;
 
@@ -179,7 +182,7 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
     setBuildStep(0);
     setBuildLines([]);
     startedAtRef.current=new Date().toISOString();
-    finishedRunRef.current=null; setSyncState("idle");
+    runIdRef.current+=1; finishedRunRef.current=null; setSyncState("idle");
     setIsRunning(true);
     setIsPaused(false);
     setSeed(Math.random());
@@ -244,10 +247,11 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
   },[isBuilding]);
 
   const onFinish=useCallback(async()=>{
+    // one-fire: ignore repeat invocations for the same run, keyed on the
+    // stable run id assigned at doStart (survives startedAtRef nulling)
+    if(finishedRunRef.current===runIdRef.current) return;
+    finishedRunRef.current=runIdRef.current;
     const startedAt=startedAtRef.current||new Date().toISOString();
-    // one-fire: ignore repeat invocations for the same run (RAF stale closure)
-    if(finishedRunRef.current===startedAt) return;
-    finishedRunRef.current=startedAt;
     const finishedAt=new Date().toISOString();
     // actual elapsed minus paused time (not the full route total)
     const elapsedSec=Math.min(10800, Math.max(1, Math.round((performance.now()-t0Ref.current-pausedRef.current)/1000)));
