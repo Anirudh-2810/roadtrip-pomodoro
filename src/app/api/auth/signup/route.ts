@@ -4,6 +4,7 @@ import { signupSchema } from "@/lib/validation";
 import { rateLimitAsync } from "@/lib/rate-limit";
 import { getClientIp, readJsonWithLimit } from "@/lib/security";
 import { generateCsrfToken } from "@/lib/csrf";
+import { getAppUrl } from "@/lib/env";
 
 export async function POST(req: NextRequest) {
   const ip = getClientIp(req);
@@ -29,18 +30,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const supabase = await createClient();
-    const raw = process.env.NEXT_PUBLIC_APP_URL?.trim();
-    let appUrl: string;
-    if (raw) {
-      try {
-        // validate URL, strip trailing slash
-        appUrl = new URL(raw).toString().replace(/\/$/, "");
-      } catch {
-        appUrl = "http://localhost:3000";
-      }
-    } else {
-      appUrl = "http://localhost:3000";
-    }
+    const appUrl = getAppUrl();
     const { error } = await supabase.auth.signUp({
       email,
       password,

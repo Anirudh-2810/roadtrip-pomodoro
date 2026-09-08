@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { getAppUrl } from "@/lib/env";
 
 export function getResend(): Resend | null {
   const key = process.env.RESEND_API_KEY;
@@ -36,12 +37,12 @@ export async function sendSessionEmail(opts: {
             <strong style="color:#10b981;">${mins}m</strong> <span style="color:#fafafa;">· ${escapeHtml(opts.preset)}</span> <span style="color:#71717a;">· ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}</span>
           </div>
           <p style="margin:16px 0 0; font-size:12px; color:#71717a;">You're receiving this because you enabled auto-email per Pomodoro. Disable in Settings → Email Preferences.</p>
-          <p style="margin:8px 0 0; font-size:12px; color:#71717a;"><a href="${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/settings" style="color:#10b981;">Manage preferences</a> · <a href="${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/api/email/unsubscribe" style="color:#71717a;">Unsubscribe</a></p>
+          <p style="margin:8px 0 0; font-size:12px; color:#71717a;"><a href="${getAppUrl()}/settings" style="color:#10b981;">Manage preferences</a> · <a href="${getAppUrl()}/api/email/unsubscribe" style="color:#71717a;">Unsubscribe</a></p>
         </div>
       `,
       text: `${subject}\n${mins}m · ${opts.preset} · ${opts.intent ?? ""}\n${new Date().toISOString()}`,
       headers: {
-        "List-Unsubscribe": `<${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/api/email/unsubscribe>`,
+        "List-Unsubscribe": `<${getAppUrl()}/api/email/unsubscribe>`,
         "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
       },
     });
@@ -82,7 +83,7 @@ export async function sendDigestEmail(opts: {
           <h1 style="margin:0 0 4px;">${opts.period === "daily" ? "Daily digest" : "Weekly digest"}</h1>
           <p style="margin:0 0 16px; color:#a1a1aa;">${opts.stats.completed} completed · ${opts.stats.totalMin} min · streak ${opts.stats.streak} day(s)</p>
           <table style="width:100%; border-collapse:collapse; font-size:13px;"><thead><tr><th style="text-align:left; padding:6px 8px; border:1px solid #27272a; background:#18181b;">Date</th><th style="padding:6px 8px; border:1px solid #27272a; background:#18181b;">Preset</th><th style="padding:6px 8px; border:1px solid #27272a; background:#18181b;">Min</th><th style="padding:6px 8px; border:1px solid #27272a; background:#18181b;">Intent</th></tr></thead><tbody>${rowsHtml || '<tr><td colspan="4" style="padding:12px; text-align:center; color:#71717a;">No sessions this period — hit the timer!</td></tr>'}</tbody></table>
-          <p style="margin:16px 0 0; font-size:12px; color:#71717a;"><a href="${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/dashboard" style="color:#10b981;">Open dashboard</a></p>
+          <p style="margin:16px 0 0; font-size:12px; color:#71717a;"><a href="${getAppUrl()}/dashboard" style="color:#10b981;">Open dashboard</a></p>
         </div>
       `,
       text: `${subject}\n${opts.rows.map((r) => `${r.date} ${r.preset} ${r.mins}m ${r.intent ?? ""}`).join("\n")}`,

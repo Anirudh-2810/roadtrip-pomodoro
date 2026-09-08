@@ -14,6 +14,20 @@ const serverSchema = z.object({
   CSRF_SECRET: z.string().min(16).optional(),
 });
 
+// App URL helper — fallback only in development, fail-closed in production
+export function getAppUrl(): string {
+  const raw = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  if (raw) {
+    try {
+      return new URL(raw).toString().replace(/\/$/, "");
+    } catch {
+      if (process.env.NODE_ENV === "production") throw new Error("NEXT_PUBLIC_APP_URL invalid");
+    }
+  }
+  if (process.env.NODE_ENV === "production") throw new Error("NEXT_PUBLIC_APP_URL not configured");
+  return "http://localhost:3000";
+}
+
 export type Env = z.infer<typeof serverSchema>;
 
 let cached: Env | null = null;
