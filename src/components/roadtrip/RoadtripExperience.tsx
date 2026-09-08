@@ -2,8 +2,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import RoadtripCanvas from "./RoadtripCanvas";
 import { ensureRoadtripAudio, setRoadtripVol } from "@/lib/audio-roadtrip";
-import { saveGuestSession } from "@/lib/guest";
+import { saveGuestSession, removeGuestSession } from "@/lib/guest";
 import { parsePreset } from "@/lib/validation";
+import { formatIST } from "@/lib/datetime";
 
 type NoiseKind = "brown" | "pink" | "white" | "rain";
 const ROUTES: Array<{ name: string; mins: number; desc: string; order: string; km: string }> = [
@@ -54,6 +55,10 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
   const hideTimerRef = useRef<number|null>(null);
   const buildingTimerRef = useRef<number|null>(null);
   const lastBuildRef = useRef<string>("");
+  // one-fire guard: the RAF tick can invoke onFinish on back-to-back frames
+  // with a stale `remaining` closure before React re-subscribes the effect
+  const finishedRunRef = useRef<string|null>(null);
+  const [syncState, setSyncState] = useState<"idle"|"saving"|"saved"|"local"|"failed">("idle");
   const progress = total ? (total-remaining)/total : 0;
 
   useEffect(()=>{ fetch("/api/csrf").then(r=>r.json()).then(j=>setCsrf(j.csrf as string)).catch(()=>{}); }, []);
@@ -174,6 +179,7 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
     setBuildStep(0);
     setBuildLines([]);
     startedAtRef.current=new Date().toISOString();
+    finishedRunRef.current=null; setSyncState("idle");
     setIsRunning(true);
     setIsPaused(false);
     setSeed(Math.random());
@@ -239,18 +245,25 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
 
   const onFinish=useCallback(async()=>{
     const startedAt=startedAtRef.current||new Date().toISOString();
-    const elapsedMin=Math.max(1, Math.round((total-remaining)/60)||Math.round(total/60));
+    // one-fire: ignore repeat invocations for the same run (RAF stale closure)
+    if(finishedRunRef.current===startedAt) return;
+    finishedRunRef.current=startedAt;
+    const finishedAt=new Date().toISOString();
+    // actual elapsed minus paused time (not the full route total)
+    const elapsedSec=Math.min(10800, Math.max(1, Math.round((performance.now()-t0Ref.current-pausedRef.current)/1000)));
+    const elapsedMin=Math.max(1, Math.round(elapsedSec/60));
     const km=Number((distRenderRef.current/42).toFixed(1));
-    const data:Record<string,unknown>={ started_at:startedAt, finished_at:new Date().toISOString(), duration_min:elapsedMin, duration_sec:total, intent:intent||"(no intent)", route:routeName, preset:routeName, completed:true, sound_on:humOn, km };
+    const data:Record<string,unknown>={ started_at:startedAt, finished_at:finishedAt, duration_min:elapsedMin, duration_sec:elapsedSec, intent:intent||"(no intent)", route:routeName, preset:routeName, completed:true, sound_on:humOn, km };
     setDoneInfo({...data,km}); setShowDone(true); setTimeout(()=>setShowDone(false),5000);
     startedAtRef.current=null;
     try{ const arr=JSON.parse(localStorage.getItem("rf_sessions")||"[]") as unknown[]; (arr as unknown[]).push(data); localStorage.setItem("rf_sessions", JSON.stringify((arr as unknown[]).slice(-50))); if(showLog) loadLogs(); }catch{}
-    const row={ started_at:startedAt, finished_at:data.finished_at as string, duration_sec:total, preset:routeName, intent:intent||undefined, completed:true, route:routeName };
+    const row={ started_at:startedAt, finished_at:data.finished_at as string, duration_sec:elapsedSec, preset:routeName, intent:intent||undefined, completed:true, route:routeName };
     saveGuestSession(row as unknown as Parameters<typeof saveGuestSession>[0]);
     if(userEmail){
+      setSyncState("saving");
       const headers:Record<string,string>={"Content-Type":"application/json"}; if(csrf) headers["x-csrf-token"]=csrf;
-      fetch("/api/sessions",{method:"POST",headers,body:JSON.stringify(row)}).then(res=>{ if(res.ok) fetch("/api/email/session",{method:"POST",headers,body:JSON.stringify({to:userEmail, ...row})}).catch(()=>{}); }).catch(()=>{});
-    }
+      fetch("/api/sessions",{method:"POST",headers,body:JSON.stringify(row)}).then(res=>{ if(res.ok){ removeGuestSession(startedAt); setSyncState("saved"); fetch("/api/email/session",{method:"POST",headers,body:JSON.stringify({to:userEmail, ...row})}).catch(()=>{}); } else setSyncState("failed"); }).catch(()=>setSyncState("failed"));
+    } else setSyncState("local");
     try{ if("Notification" in window && Notification.permission==="granted"){ const n=new Notification("Journey completed",{body:`${routeName} · ${elapsedMin} min — ${intent||"No intent"} · ${km} km`}); setTimeout(()=>n.close(),5000); } }catch{}
     try{ const Ctx=(window.AudioContext || (window as unknown as {webkitAudioContext:typeof AudioContext}).webkitAudioContext) as typeof AudioContext; const ctx2=new Ctx(); const o=ctx2.createOscillator(), g=ctx2.createGain(); o.type="sine"; o.frequency.value=880; o.connect(g).connect(ctx2.destination); g.gain.setValueAtTime(0,ctx2.currentTime); g.gain.linearRampToValueAtTime(0.18,ctx2.currentTime+0.02); g.gain.exponentialRampToValueAtTime(0.001,ctx2.currentTime+0.6); o.start(); o.stop(ctx2.currentTime+0.65); }catch{}
     try{ localStorage.removeItem("rf_state"); }catch{}
@@ -292,12 +305,17 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
       try{ const arr=JSON.parse(localStorage.getItem("rf_sessions")||"[]") as unknown[]; (arr as unknown[]).push(data); localStorage.setItem("rf_sessions", JSON.stringify((arr as unknown[]).slice(-50))); if(showLog) loadLogs(); }catch{}
       const row={ started_at:data.started_at as string, finished_at:data.finished_at as string, duration_sec:elapsedMin*60, preset:routeName, intent:intent||undefined, completed:false, route:routeName };
       saveGuestSession(row as unknown as Parameters<typeof saveGuestSession>[0]);
+      // incomplete rows also belong to the cloud (no email for breaks)
+      if(userEmail){
+        const headers:Record<string,string>={"Content-Type":"application/json"}; if(csrf) headers["x-csrf-token"]=csrf;
+        fetch("/api/sessions",{method:"POST",headers,body:JSON.stringify(row)}).then(res=>{ if(res.ok) removeGuestSession(row.started_at); }).catch(()=>{});
+      }
     }
     // cancel building if resetting during build
     if(isBuilding) cancelBuild();
     setIsRunning(false); setIsPaused(false); setRemaining(routeMin*60); setTotal(routeMin*60); startedAtRef.current=null; distRef.current=0; distRenderRef.current=0;
     try{ localStorage.removeItem("rf_state"); }catch{}
-  },[isRunning,remaining,total,intent,routeName,humOn,routeMin,showLog,loadLogs,isBuilding,cancelBuild]);
+  },[isRunning,remaining,total,intent,routeName,humOn,routeMin,showLog,loadLogs,isBuilding,cancelBuild,userEmail,csrf]);
 
   useEffect(()=>{
     const onKey=(e:KeyboardEvent)=>{
@@ -398,7 +416,7 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
                 {!logRows.length ? <div className="py-10 text-center text-xs italic text-zinc-600">No trips yet — hit the road!</div> : logRows.slice(0,50).map((r,i)=>(
                   <div key={String(r.finished_at??i)} className="rounded-xl border border-white/[0.06] bg-[#1A1E23] p-3">
                     <div className="flex items-center justify-between text-xs font-bold text-white"><span>{String(r.route??"")} · {Number(r.duration_min??r.duration_sec ? Math.round(Number(r.duration_sec)/60) : 0)}m</span><span className={"rounded-full px-2 py-0.5 text-[9px] "+((r.completed as boolean)?"bg-[#00E69A]/20 text-[#00E69A]":"bg-white/10 text-zinc-500")}>{(r.completed as boolean)?"DELIVERED":"IN TRANSIT"}</span></div>
-                    <div className="mt-1 truncate text-[10px] text-zinc-500">{String(r.intent??"")} · {String(r.finished_at??"").slice(0,16).replace("T"," ")}</div>
+                    <div className="mt-1 truncate text-[10px] text-zinc-500">{String(r.intent??"")} · {formatIST(String(r.finished_at??""))}</div>
                     <button onClick={()=> deleteTransit(r.finished_at)} className="mt-1 text-[10px] text-red-400 hover:text-red-300">Delete</button>
                   </div>
                 ))}
@@ -507,6 +525,7 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
               <div className="text-sm font-bold text-white">Journey completed</div>
               <div className="text-xs text-zinc-500">{String((doneInfo as Record<string,unknown>).route??routeName)} · {String((doneInfo as Record<string,unknown>).duration_min??"")}m · {String((doneInfo as Record<string,unknown>).km??"")} km</div>
               <div className="mt-1 truncate text-xs text-zinc-300">{String((doneInfo as Record<string,unknown>).intent??intent)}</div>
+              <div className="mt-1 text-[11px]">{syncState==="saved" ? <span className="text-emerald-400">✓ Saved to cloud</span> : syncState==="failed" ? <span className="text-red-400">Cloud save failed — kept in this browser</span> : syncState==="saving" ? <span className="text-zinc-500">Saving…</span> : <span className="text-zinc-500">Saved in this browser (guest)</span>}</div>
               <div className="mt-2 flex gap-2"><button onClick={()=>setShowLog(true)} className="rounded-full border border-white/10 px-3 py-1 text-xs text-zinc-300">Trip Log</button><button onClick={()=>setShowDone(false)} className="rounded-full bg-[#00E69A] px-3 py-1 text-xs font-bold text-[#00140e]">Dismiss</button></div>
             </div>
           )}
@@ -516,7 +535,7 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-4 backdrop-blur-[8px]" onClick={e=>{ if(e.target===e.currentTarget) setShowLog(false); }}>
           <div className="flex max-h-[72vh] w-[min(640px,92vw)] flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#1A1E23] shadow-2xl">
             <div className="flex items-center justify-between border-b border-white/10 p-4"><h2 className="text-sm font-extrabold tracking-[0.8px] text-[#00E69A]">Trip Log</h2><div className="flex items-center gap-2 text-[11px] text-zinc-500"><span>{logRows.length} trips</span><button onClick={()=>setShowLog(false)} className="rounded-full border border-white/10 px-3 py-1 text-zinc-300">Close</button></div></div>
-            <div className="flex-1 overflow-auto"><table className="w-full border-collapse text-xs"><thead className="sticky top-0 bg-[#1A1E23] text-[10px] uppercase tracking-[0.6px] text-zinc-500"><tr><th className="p-2 text-left">Date</th><th className="p-2 text-left">Route</th><th className="p-2 text-left">Min</th><th className="p-2 text-left">Intent</th><th className="p-2 text-left">Done</th></tr></thead><tbody>{logRows.map((r,i)=><tr key={String(r.finished_at??i)} className="border-b border-white/5 hover:bg-white/[0.03]"><td className="p-2 text-zinc-300">{String(r.finished_at??"").slice(0,16).replace("T"," ")}</td><td className="p-2 text-white">{String(r.route??"")}</td><td className="p-2 text-white">{String(r.duration_min??"")}</td><td className="max-w-[200px] truncate p-2 text-zinc-400">{String(r.intent??"")}</td><td className="p-2">{(r.completed as boolean)?"✓":"—"}</td></tr>)}{!logRows.length && <tr><td colSpan={5} className="p-8 text-center italic text-zinc-600">No trips yet</td></tr>}</tbody></table></div>
+            <div className="flex-1 overflow-auto"><table className="w-full border-collapse text-xs"><thead className="sticky top-0 bg-[#1A1E23] text-[10px] uppercase tracking-[0.6px] text-zinc-500"><tr><th className="p-2 text-left">Date</th><th className="p-2 text-left">Route</th><th className="p-2 text-left">Min</th><th className="p-2 text-left">Intent</th><th className="p-2 text-left">Done</th></tr></thead><tbody>{logRows.map((r,i)=><tr key={String(r.finished_at??i)} className="border-b border-white/5 hover:bg-white/[0.03]"><td className="p-2 text-zinc-300">{formatIST(String(r.finished_at??""))}</td><td className="p-2 text-white">{String(r.route??"")}</td><td className="p-2 text-white">{String(r.duration_min??"")}</td><td className="max-w-[200px] truncate p-2 text-zinc-400">{String(r.intent??"")}</td><td className="p-2">{(r.completed as boolean)?"✓":"—"}</td></tr>)}{!logRows.length && <tr><td colSpan={5} className="p-8 text-center italic text-zinc-600">No trips yet</td></tr>}</tbody></table></div>
             <div className="flex items-center justify-between border-t border-white/10 p-3"><div className="flex gap-2"><button onClick={exportLogs} className="rounded-lg border border-white/10 bg-black px-3 py-1.5 text-xs font-bold text-white">Export</button><button onClick={clearLogs} className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs font-bold text-red-400">Clear</button></div><button onClick={()=>setShowLog(false)} className="rounded-lg bg-[#00E69A] px-3 py-1.5 text-xs font-bold text-[#00140e]">Done</button></div>
           </div>
         </div>

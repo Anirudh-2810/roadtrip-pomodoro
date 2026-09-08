@@ -47,6 +47,15 @@ export function clearGuestSessions(): void {
   localStorage.removeItem(KEY);
 }
 
+// Drop one row (e.g. after it is safely stored in the cloud) — match by started_at
+export function removeGuestSession(started_at: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    const cur = getGuestSessions().filter((r) => r.started_at !== started_at);
+    localStorage.setItem(KEY, JSON.stringify(cur.slice(0, 500)));
+  } catch {}
+}
+
 export function guestStats(): { totalMin: number; completed: number; streak: number } {
   const rows = getGuestSessions();
   const completed = rows.filter((r) => r.completed).length;

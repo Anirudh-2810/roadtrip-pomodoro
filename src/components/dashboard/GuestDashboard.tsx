@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { getGuestSessions, guestStats, type GuestSession } from "@/lib/guest";
+import { formatIST } from "@/lib/datetime";
 
 // Logged-out dashboard — reads browser-local guest sessions only.
 // No API calls, no account needed. Mirrors the authed dashboard style.
@@ -55,7 +56,7 @@ export default function GuestDashboard() {
           <div className="divide-y divide-white/5">
             {rows.map((r, i) => (
               <div key={i} className="flex items-center justify-between px-4 py-2.5 text-xs">
-                <span className="font-mono text-white">{r.started_at.slice(0, 16).replace("T", " ")} · {Math.round(r.duration_sec / 60)}m · {r.preset}</span>
+                <span className="font-mono text-white">{formatIST(r.started_at)} · {Math.round(r.duration_sec / 60)}m · {r.preset}</span>
                 <span className="text-zinc-500 truncate max-w-[160px]">{r.intent ?? "—"}</span>
                 <span className={`rounded-full px-2 py-0.5 text-[10px] ${r.completed ? "bg-emerald-500/20 text-emerald-400" : "bg-white/10 text-zinc-500"}`}>{r.completed ? "done" : "break"}</span>
               </div>

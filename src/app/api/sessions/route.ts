@@ -40,16 +40,21 @@ export async function POST(req: NextRequest) {
 
   try {
     const supabase = await createClient();
-    const { error } = await supabase.from("sessions").insert({
-      user_id: user.id,
-      started_at: parsed.data.started_at,
-      finished_at: parsed.data.finished_at,
-      duration_sec: parsed.data.duration_sec,
-      preset: parsed.data.preset,
-      intent: parsed.data.intent ?? null,
-      completed: parsed.data.completed,
-      route: parsed.data.route ?? parsed.data.preset,
-    });
+    // Idempotent: (user_id, started_at) is unique (migration 003). A retried
+    // or double-fired finish collapses to one row instead of duplicating.
+    const { error } = await supabase.from("sessions").upsert(
+      {
+        user_id: user.id,
+        started_at: parsed.data.started_at,
+        finished_at: parsed.data.finished_at,
+        duration_sec: parsed.data.duration_sec,
+        preset: parsed.data.preset,
+        intent: parsed.data.intent ?? null,
+        completed: parsed.data.completed,
+        route: parsed.data.route ?? parsed.data.preset,
+      },
+      { onConflict: "user_id,started_at", ignoreDuplicates: true }
+    );
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
     return NextResponse.json({ ok: true });
   } catch (e) {

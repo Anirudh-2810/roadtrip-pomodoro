@@ -1,5 +1,6 @@
 import { getUser } from "@/lib/supabase/server";
 import GuestDashboard from "@/components/dashboard/GuestDashboard";
+import { formatIST } from "@/lib/datetime";
 
 export default async function DashboardPage() {
   const user = await getUser();
@@ -61,7 +62,7 @@ export default async function DashboardPage() {
           <div className="divide-y divide-white/5">
             {rows.map((r, i) => (
               <div key={i} className="flex items-center justify-between px-4 py-2.5 text-xs">
-                <span className="font-mono text-white">{r.started_at.slice(0, 16).replace("T", " ")} · {Math.round(r.duration_sec / 60)}m · {r.preset}</span>
+                <span className="font-mono text-white">{formatIST(r.started_at)} · {Math.round(r.duration_sec / 60)}m · {r.preset}</span>
                 <span className="text-zinc-500 truncate max-w-[160px]">{r.intent ?? "—"}</span>
                 <span className={`rounded-full px-2 py-0.5 text-[10px] ${r.completed ? "bg-emerald-500/20 text-emerald-400" : "bg-white/10 text-zinc-500"}`}>{r.completed ? "done" : "break"}</span>
               </div>

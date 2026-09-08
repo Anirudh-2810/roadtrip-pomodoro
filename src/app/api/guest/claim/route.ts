@@ -34,7 +34,21 @@ export async function POST(req: NextRequest) {
 
   try {
     const supabase = await createClient();
-    const rows = parsed.data.sessions.map((s) => ({
+    // Skip rows already stored (authed finishes POST to the server AND keep a
+    // guest copy until the POST succeeds — re-claiming must not duplicate).
+    const { data: existing } = await supabase
+      .from("sessions")
+      .select("started_at")
+      .eq("user_id", user.id);
+    const seen = new Set((existing ?? []).map((r) => new Date(r.started_at).toISOString()));
+    const fresh = parsed.data.sessions.filter((s) => {
+      try {
+        return !seen.has(new Date(s.started_at).toISOString());
+      } catch {
+        return true;
+      }
+    });
+    const rows = fresh.map((s) => ({
       user_id: user.id,
       started_at: s.started_at,
       finished_at: s.finished_at,
@@ -47,7 +61,7 @@ export async function POST(req: NextRequest) {
     // insert in chunks of 100
     for (let i = 0; i < rows.length; i += 100) {
       const chunk = rows.slice(i, i + 100);
-      const { error } = await supabase.from("sessions").insert(chunk);
+      const { error } = await supabase.from("sessions").upsert(chunk, { onConflict: "user_id,started_at", ignoreDuplicates: true });
       if (error) return NextResponse.json({ error: error.message }, { status: 400 });
     }
     return NextResponse.json({ ok: true, claimed: rows.length });
