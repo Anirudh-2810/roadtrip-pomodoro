@@ -500,10 +500,10 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
           </div>
         </div>
       )}
-      <div className="flex min-h-0 flex-1 gap-0 lg:gap-3 p-0 lg:p-3 bg-[#070A0E]">
+      <div className="flex min-h-0 flex-1 flex-col gap-0 p-0 lg:flex-row lg:gap-3 lg:p-3 bg-[#070A0E]">
         {/* Left sidebar - exactly like Image 1 */}
         {!isFullscreen && (
-          <div className="flex w-full lg:w-[380px] shrink-0 flex-col overflow-hidden rounded-none lg:rounded-2xl border-0 lg:border border-white/10 bg-[#0F1215] shadow-none lg:shadow-xl">
+          <div className="flex w-full lg:w-[380px] shrink-0 flex-col overflow-visible lg:overflow-hidden rounded-none lg:rounded-2xl border-0 lg:border border-white/10 bg-[#0F1215] shadow-none lg:shadow-xl">
             {/* Header */}
             <div className="px-4 pt-4 pb-3 border-b border-white/[0.06]">
               <h1 className="text-[12px] font-extrabold tracking-[1.4px] text-[#00E69A]">ROADTRIP FOCUS</h1>
@@ -527,7 +527,7 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
 
             {/* Content area */}
             {sheetTab==="onroad" ? (
-              <div className="flex-1 overflow-auto px-2 pb-2 space-y-2">
+              <div className="flex-1 overflow-auto px-2 pb-2 space-y-2 max-h-[40dvh] lg:max-h-none">
                 {ROUTES.map(r=> {
                   const active = routeName===r.name && !customMin;
                   return (
@@ -551,7 +551,7 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
                 </div>
               </div>
             ) : (
-              <div className="flex-1 overflow-auto px-2 pb-2 space-y-2">
+              <div className="flex-1 overflow-auto px-2 pb-2 space-y-2 max-h-[40dvh] lg:max-h-none">
                 {!logRows.length ? <div className="py-10 text-center text-xs italic text-zinc-600">No trips yet — hit the road!</div> : logRows.slice(0,50).map((r,i)=>(
                   <div key={String(r.finished_at??i)} className="rounded-xl border border-white/[0.06] bg-[#1A1E23] p-3">
                     <div className="flex items-center justify-between text-xs font-bold text-white"><span>{String(r.route??"")} · {Number(r.duration_min??r.duration_sec ? Math.round(Number(r.duration_sec)/60) : 0)}m</span><span className={"rounded-full px-2 py-0.5 text-[9px] "+((r.completed as boolean)?"bg-[#00E69A]/20 text-[#00E69A]":"bg-white/10 text-zinc-500")}>{(r.completed as boolean)?"DELIVERED":"IN TRANSIT"}</span></div>
@@ -631,7 +631,7 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
         )}
 
         {/* Canvas - right side like Image 1, fullscreen like Image 2 */}
-        <div ref={canvasWrapRef} className={"relative flex flex-1 overflow-hidden bg-[#040709] "+(isFullscreen ? "fixed inset-0 z-30 rounded-none border-0 fs-full" : "rounded-none lg:rounded-2xl border-0 lg:border border-white/10")}>
+        <div ref={canvasWrapRef} className={"relative flex h-[38dvh] w-full shrink-0 overflow-hidden bg-[#040709] lg:h-auto lg:w-auto lg:flex-1 "+(isFullscreen ? "fixed inset-0 z-30 rounded-none border-0 fs-full" : "rounded-none lg:rounded-2xl border-0 lg:border border-white/10")}>
           <RoadtripCanvas distRef={distRef} distRenderRef={distRenderRef} seed={seed} progress={progress} isRunningRef={isRunningRef} isPausedRef={isPausedRef} pausedOffRef={pausedOffRef} parkedRef={parkedRef} parkTRef={parkTRef} />
           {/* Top pill - fullscreen shows "No intent ..." like Image 2, windowed shows intent */}
           <div className={"absolute left-1/2 z-10 -translate-x-1/2 "+(isFullscreen ? "top-3" : "top-3 hidden lg:flex")+" "+(!controlsVisible && isFullscreen ? "opacity-0 pointer-events-none" : "")}>
