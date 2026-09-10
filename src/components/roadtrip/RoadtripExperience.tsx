@@ -65,11 +65,14 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
   // Never creates sessions rows; run clock stays frozen via the pause path.
   const parkedRef = useRef(false);
   const parkTRef = useRef(0);
+  const parkAnimRef = useRef({ from: 0, t0: 0, dir: false });
   const [breakState, setBreakState] = useState<{ total: number; remaining: number } | null>(null);
   const [showBreakPicker, setShowBreakPicker] = useState(false);
   const breakTimerRef = useRef<number|null>(null);
   const breakLeftRef = useRef(0);
   const breakResumeRef = useRef(false);
+  const resumeTimerRef = useRef<number|null>(null);
+  const mergingRef = useRef(false);
   const [syncState, setSyncState] = useState<"idle"|"saving"|"saved"|"local"|"failed">("idle");
   const progress = total ? (total-remaining)/total : 0;
 
@@ -315,6 +318,8 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
     // resetting during a break ends the break quietly (no resume, no row)
     if(breakState){
       if(breakTimerRef.current){ window.clearInterval(breakTimerRef.current); breakTimerRef.current=null; }
+      if(resumeTimerRef.current){ window.clearTimeout(resumeTimerRef.current); resumeTimerRef.current=null; }
+      mergingRef.current=false;
       parkedRef.current=false; breakResumeRef.current=false; setBreakState(null);
     }
     if(isRunning && remaining>0 && remaining<total){
@@ -359,15 +364,21 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
     }catch{}
   },[]);
   const endBreak = useCallback((withChime:boolean)=>{
+    if(mergingRef.current) return; // merge already in flight — ignore double-taps
     if(breakTimerRef.current){ window.clearInterval(breakTimerRef.current); breakTimerRef.current=null; }
     parkedRef.current=false;
     const resume=breakResumeRef.current; breakResumeRef.current=false;
     setBreakState(null); setShowBreakPicker(false);
-    if(resume) setIsPaused(false); // auto/manual return resumes the run clock
+    // cinematic merge: car pulls out first (~1s head start), road catches up under it
+    if(resume){
+      mergingRef.current=true;
+      if(resumeTimerRef.current) window.clearTimeout(resumeTimerRef.current);
+      resumeTimerRef.current = window.setTimeout(()=>{ setIsPaused(false); mergingRef.current=false; resumeTimerRef.current=null; },1000) as unknown as number;
+    }
     if(withChime) playBreakChime();
   },[playBreakChime]);
   const startBreak = useCallback((mins:number)=>{
-    if(breakState || isBuilding) return;
+    if(breakState || isBuilding || mergingRef.current) return;
     const secs=Math.max(60, Math.min(1800, Math.round(mins*60)));
     // pause the run if one is live — pause accounting freezes the session clock for free
     breakResumeRef.current = isRunning;
@@ -382,8 +393,8 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
       else setBreakState(prev=> prev ? { ...prev, remaining: left } : prev);
     },1000) as unknown as number;
   },[breakState,isBuilding,isRunning,isPaused,playEngineOffClick,endBreak]);
-  // cleanup break ticker on unmount
-  useEffect(()=> ()=>{ if(breakTimerRef.current) window.clearInterval(breakTimerRef.current); },[]);
+  // cleanup break + resume timers on unmount
+  useEffect(()=> ()=>{ if(breakTimerRef.current) window.clearInterval(breakTimerRef.current); if(resumeTimerRef.current) window.clearTimeout(resumeTimerRef.current); },[]);
 
   useEffect(()=>{
     const onKey=(e:KeyboardEvent)=>{
@@ -561,7 +572,7 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
 
         {/* Canvas - right side like Image 1, fullscreen like Image 2 */}
         <div ref={canvasWrapRef} className={"relative flex flex-1 overflow-hidden bg-[#040709] "+(isFullscreen ? "fixed inset-0 z-30 rounded-none border-0 fs-full" : "rounded-none lg:rounded-2xl border-0 lg:border border-white/10")}>
-          <RoadtripCanvas distRef={distRef} distRenderRef={distRenderRef} seed={seed} progress={progress} isRunningRef={isRunningRef} isPausedRef={isPausedRef} pausedOffRef={pausedOffRef} parkedRef={parkedRef} parkTRef={parkTRef} />
+          <RoadtripCanvas distRef={distRef} distRenderRef={distRenderRef} seed={seed} progress={progress} isRunningRef={isRunningRef} isPausedRef={isPausedRef} pausedOffRef={pausedOffRef} parkedRef={parkedRef} parkTRef={parkTRef} parkAnimRef={parkAnimRef} />
           {/* Top pill - fullscreen shows "No intent ..." like Image 2, windowed shows intent */}
           <div className={"absolute left-1/2 z-10 -translate-x-1/2 "+(isFullscreen ? "top-3" : "top-3 hidden lg:flex")+" "+(!controlsVisible && isFullscreen ? "opacity-0 pointer-events-none" : "")}>
             <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-[#1A1E23]/90 px-3 py-1.5 text-xs backdrop-blur-xl">
