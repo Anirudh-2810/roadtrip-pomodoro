@@ -352,14 +352,14 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
   const onRoadCount = ROUTES.length;
 
   return (
-    <div className={"flex min-h-[calc(100vh-56px)] flex-col bg-[#070A0E] "+(isFullscreen?"is-fs-mode":"")} onMouseMove={resetHideTimer}>
+    <div className={"app-shell flex flex-col bg-[#070A0E] "+(isFullscreen?"is-fs-mode":"")} onMouseMove={resetHideTimer}>
       {showCover && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-[rgba(7,10,14,0.78)] p-5 backdrop-blur-[18px]" onClick={e=>{ if(e.target===e.currentTarget) dismissCover(); }}>
           <div className="flex w-[min(440px,92vw)] flex-col gap-3.5 rounded-[18px] border border-[rgba(30,42,51,0.92)] bg-[rgba(15,20,25,0.96)] p-5 text-center shadow-xl">
             <div className="text-[11px] font-extrabold tracking-[1.2px] text-[#10B981]">READY TO ROLL</div>
             <div className="text-[22px] font-extrabold leading-tight text-white">Are you ready to hit the road?</div>
             <div className="text-[13px] leading-[1.45] text-zinc-400">Pick an intent and a route — the highway will idle behind you.</div>
-            <div className="rounded-xl border border-white/10 bg-[#121212] p-3 text-left"><label className="mb-1.5 block text-[11px] font-bold text-zinc-500">Intent</label><input value={intent} onChange={e=>setIntent(e.target.value.slice(0,200))} onKeyDown={e=>{ if(e.key==="Enter") dismissCover(); }} placeholder='e.g. &quot;finish problem set 3.1&quot;' className="w-full rounded-[10px] border border-white/10 bg-white/[0.05] px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-[#10B981]" /></div>
+            <div className="rounded-xl border border-white/10 bg-[#121212] p-3 text-left"><label className="mb-1.5 block text-[11px] font-bold text-zinc-500">Intent</label><input value={intent} onChange={e=>setIntent(e.target.value.slice(0,200))} onKeyDown={e=>{ if(e.key==="Enter") dismissCover(); }} placeholder='e.g. &quot;finish problem set 3.1&quot;' className="w-full rounded-[10px] border border-white/10 bg-white/[0.05] px-3 py-2 text-base sm:text-sm text-white outline-none placeholder:text-zinc-600 focus:border-[#10B981]" /></div>
             <button onClick={dismissCover} className="mx-auto inline-flex max-w-[280px] items-center justify-center rounded-full bg-[#10B981] px-6 py-3 text-sm font-bold text-[#00140e]">Let&apos;s roll →</button>
             <div className="text-[11px] text-zinc-500">Road keeps idling behind · Space to start/pause</div>
           </div>
@@ -387,7 +387,7 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
             {/* Intent */}
             <div className="px-4 pb-3">
               <label className="block mb-1.5 text-[11px] font-bold text-zinc-400">Intent</label>
-              <input value={intent} onChange={e=>setIntent(e.target.value.slice(0,200))} placeholder='e.g. &quot;finish problem set 3.1&quot;' className="w-full rounded-full border border-white/10 bg-[#1A1E23] px-3.5 py-2 text-xs text-white outline-none placeholder:text-zinc-600 focus:border-[#00E69A]/40" />
+              <input value={intent} onChange={e=>setIntent(e.target.value.slice(0,200))} placeholder='e.g. &quot;finish problem set 3.1&quot;' className="w-full rounded-full border border-white/10 bg-[#1A1E23] px-3.5 py-2 text-base sm:text-xs text-white outline-none placeholder:text-zinc-600 focus:border-[#00E69A]/40" />
             </div>
 
             {/* Content area */}
@@ -406,7 +406,7 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
                   );
                 })}
                 <div className="pt-1">
-                  <input value={customMin} onChange={e=>handleCustomChange(e.target.value)} placeholder="Custom minutes or mm:ss (e.g. 1 or 1:30)" disabled={(isRunning && !isPaused) || isBuilding} className="w-full rounded-full border border-white/10 bg-[#1A1E23] px-3.5 py-2 text-xs text-white outline-none placeholder:text-zinc-600 focus:border-[#00E69A]/40 disabled:opacity-50 disabled:cursor-not-allowed" />
+                  <input value={customMin} onChange={e=>handleCustomChange(e.target.value)} placeholder="Custom minutes or mm:ss (e.g. 1 or 1:30)" disabled={(isRunning && !isPaused) || isBuilding} className="w-full rounded-full border border-white/10 bg-[#1A1E23] px-3.5 py-2 text-base sm:text-xs text-white outline-none placeholder:text-zinc-600 focus:border-[#00E69A]/40 disabled:opacity-50 disabled:cursor-not-allowed" />
                   {customMin.trim() && parsePreset(customMin.trim())===null && !((isRunning && !isPaused) || isBuilding) && (
                     <div className="mt-1 px-2 text-[10px] text-amber-400">Enter 1–180 or mm:ss (e.g. 1:30)</div>
                   )}
@@ -436,10 +436,10 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
                   <div className="h-1.5 overflow-hidden rounded-full bg-black"><div className="h-full rounded-full bg-[#00E69A]" style={{ width: `${pct}%` }} /></div>
                   <div className="flex justify-between text-[9px] font-medium text-zinc-500"><span>{km} km · CRUISE</span><span>{pct}%</span></div>
                 </div>
-                <button onClick={()=> isRunning ? handlePauseToggle() : handleHitRoad()} className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#00E69A] text-[#00140e] hover:bg-[#00D99A]">
+                <button onClick={()=> isRunning ? handlePauseToggle() : handleHitRoad()} className="touch-44 grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#00E69A] text-[#00140e] hover:bg-[#00D99A]">
                   <span className="text-sm leading-none">{isRunning ? (isPaused ? "▶" : "❚❚") : "▶"}</span>
                 </button>
-                <button onClick={handleReset} className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white/10 text-zinc-400 hover:bg-white/15 text-xs">↻</button>
+                <button onClick={handleReset} className="touch-44 grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white/10 text-zinc-400 hover:bg-white/15 text-xs">↻</button>
               </div>
               {/* Sound controls */}
               <div className="flex items-center gap-2 rounded-full border border-white/[0.06] bg-[#1A1E23] px-3 py-2">
@@ -476,7 +476,7 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
         )}
 
         {/* Canvas - right side like Image 1, fullscreen like Image 2 */}
-        <div ref={canvasWrapRef} className={"relative flex flex-1 overflow-hidden bg-[#040709] "+(isFullscreen ? "fixed inset-0 z-30 rounded-none border-0" : "rounded-none lg:rounded-2xl border-0 lg:border border-white/10")} style={isFullscreen?{height:"100vh"}:undefined}>
+        <div ref={canvasWrapRef} className={"relative flex flex-1 overflow-hidden bg-[#040709] "+(isFullscreen ? "fixed inset-0 z-30 rounded-none border-0 fs-full" : "rounded-none lg:rounded-2xl border-0 lg:border border-white/10")}>
           <RoadtripCanvas distRef={distRef} distRenderRef={distRenderRef} seed={seed} progress={progress} isRunningRef={isRunningRef} isPausedRef={isPausedRef} pausedOffRef={pausedOffRef} />
           {/* Top pill - fullscreen shows "No intent ..." like Image 2, windowed shows intent */}
           <div className={"absolute left-1/2 z-10 -translate-x-1/2 "+(isFullscreen ? "top-3" : "top-3 hidden lg:flex")+" "+(!controlsVisible && isFullscreen ? "opacity-0 pointer-events-none" : "")}>
@@ -488,15 +488,15 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
           {/* Windowed: no extra controls (sidebar has them). Fullscreen: right vertical dock like Image 2 */}
           {isFullscreen && (
             <div className={"absolute right-3 top-1/2 z-10 flex -translate-y-1/2 flex-col items-center gap-2 rounded-2xl border border-white/10 bg-[#1A1E23]/90 p-2 backdrop-blur-xl "+(!controlsVisible ? "opacity-0 pointer-events-none" : "")}>
-              <button onClick={()=> isRunning ? handlePauseToggle() : handleHitRoad()} className="grid h-10 w-10 place-items-center rounded-full bg-[#00E69A] text-[#00140e] text-sm">{isRunning ? (isPaused ? "▶" : "❚❚") : "▶"}</button>
-              <button onClick={handleReset} className="grid h-8 w-8 place-items-center rounded-full bg-white/10 text-zinc-400 text-xs">↻</button>
+              <button onClick={()=> isRunning ? handlePauseToggle() : handleHitRoad()} className="touch-44 grid h-11 w-11 place-items-center rounded-full bg-[#00E69A] text-[#00140e] text-sm">{isRunning ? (isPaused ? "▶" : "❚❚") : "▶"}</button>
+              <button onClick={handleReset} className="touch-44 grid h-11 w-11 place-items-center rounded-full bg-white/10 text-zinc-400 text-xs">↻</button>
               <div className="text-[9px] font-mono font-bold text-zinc-400 tabular-nums">{fmt(remaining)} · {pct}%</div>
-              <button onClick={exitFS} className="grid h-8 w-8 place-items-center rounded-full bg-white/10 text-zinc-300">⛶</button>
+              <button onClick={exitFS} className="touch-44 grid h-11 w-11 place-items-center rounded-full bg-white/10 text-zinc-300">⛶</button>
             </div>
           )}
           {/* Windowed fullscreen button bottom-right like Image 1 */}
           {!isFullscreen && (
-            <button onClick={enterFS} className="absolute bottom-3 right-3 z-10 grid h-8 w-8 place-items-center rounded-full border border-white/10 bg-[#1A1E23]/80 text-zinc-400 backdrop-blur-xl hover:bg-[#1A1E23] text-xs">⛶</button>
+            <button onClick={enterFS} className="touch-44 absolute bottom-3 right-3 z-10 grid h-11 w-11 place-items-center rounded-full border border-white/10 bg-[#1A1E23]/80 text-zinc-400 backdrop-blur-xl hover:bg-[#1A1E23] text-xs">⛶</button>
           )}
           {isFullscreen && (
             <button onClick={exitFS} className="absolute bottom-3 right-3 z-10 hidden h-8 w-8 place-items-center rounded-full border border-white/10 bg-[#1A1E23]/80 text-zinc-400 lg:grid">⛶</button>
@@ -525,7 +525,7 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
           )}
           {/* Car is drawn on canvas - bottom center */}
           {showDone && doneInfo && (
-            <div className="absolute right-4 top-4 z-20 w-[340px] rounded-xl border border-white/10 bg-[#1A1E23] p-3 shadow-2xl">
+            <div className="absolute right-4 top-4 z-20 w-[min(340px,calc(100vw-32px))] max-h-[calc(100vh-32px)] max-h-[calc(100dvh-32px)] overflow-auto rounded-xl border border-white/10 bg-[#1A1E23] p-3 shadow-2xl">
               <div className="text-sm font-bold text-white">Journey completed</div>
               <div className="text-xs text-zinc-500">{String((doneInfo as Record<string,unknown>).route??routeName)} · {String((doneInfo as Record<string,unknown>).duration_min??"")}m · {String((doneInfo as Record<string,unknown>).km??"")} km</div>
               <div className="mt-1 truncate text-xs text-zinc-300">{String((doneInfo as Record<string,unknown>).intent??intent)}</div>

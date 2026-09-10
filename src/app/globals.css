@@ -28,3 +28,27 @@ body {
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
+
+/* --- Mobile fix batch 2026-09-10 (audited 2026-09-09) --- */
+/* Bug 1: iOS Safari auto-zooms on focus when input font-size < 16px.
+   Force 16px on coarse/small screens; sm: classes handle desktop. */
+@media (max-width: 640px) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Bug 2: 100vh jumps when mobile URL bar shows/hides. dvh with fallback. */
+.app-shell {
+  min-height: calc(100vh - 56px);
+  min-height: calc(100dvh - 56px);
+}
+.fs-full {
+  height: 100vh;
+  height: 100dvh;
+}
+/* Bug 4: minimum 44px touch target helper */
+.touch-44 {
+  min-width: 44px;
+  min-height: 44px;
+}
