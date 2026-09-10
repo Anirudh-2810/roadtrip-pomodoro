@@ -52,7 +52,10 @@ export function startRoadtripAudio(kind: NoiseKind, humOn: boolean, vol: number)
     src.buffer = buf;
     src.loop = true;
     const gain = ctx.createGain();
-    gain.gain.value = 1;
+    // start silent — the caller (RAF tick / vol effect) sets the true level
+    // via setRoadtripVol within a frame. Starting at 1 caused a full-volume
+    // flash on every resume before the ramp-down could apply (2026-09-10).
+    gain.gain.value = 0;
     src.connect(gain).connect(ctx.destination);
     if (ctx.state === "suspended") void ctx.resume();
     try { src.start(0); } catch {}

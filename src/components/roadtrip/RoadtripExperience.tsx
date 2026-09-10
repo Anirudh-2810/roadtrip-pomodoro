@@ -398,6 +398,7 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
         } else {
           speedRef.current=(isRunning && !isPaused)?1:0;
           if(isRunning && !isPaused){
+            driveVol(volRef.current); // claim true level (fresh starts begin silent)
             const elapsed=(now-t0Ref.current-pausedRef.current)/1000;
             const raw=Math.min(elapsed*SCENERY_SPEED*0.35, total*SCENERY_SPEED*0.35);
             const p=Math.min(elapsed/total,1);
