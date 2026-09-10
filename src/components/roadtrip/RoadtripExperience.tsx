@@ -61,6 +61,15 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
   // let the second fire mint a fresh timestamp and slip past the old guard).
   const runIdRef = useRef(0);
   const finishedRunRef = useRef<number|null>(null);
+  // Break mode (Option A manual pull-over): parked car + local countdown.
+  // Never creates sessions rows; run clock stays frozen via the pause path.
+  const parkedRef = useRef(false);
+  const parkTRef = useRef(0);
+  const [breakState, setBreakState] = useState<{ total: number; remaining: number } | null>(null);
+  const [showBreakPicker, setShowBreakPicker] = useState(false);
+  const breakTimerRef = useRef<number|null>(null);
+  const breakLeftRef = useRef(0);
+  const breakResumeRef = useRef(false);
   const [syncState, setSyncState] = useState<"idle"|"saving"|"saved"|"local"|"failed">("idle");
   const progress = total ? (total-remaining)/total : 0;
 
@@ -149,8 +158,8 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
     if (!raw) return;
     const t = parsePreset(raw);
     if (t === null) return;
-    // block while actively running (not paused) or building
-    if ((isRunning && !isPaused) || isBuilding) return;
+    // block while actively running (not paused), building, or on a break
+    if ((isRunning && !isPaused) || isBuilding || breakState) return;
     setRouteName("Custom");
     setRouteMin(t/60);
     setTotal(t);
@@ -298,11 +307,16 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
   useEffect(()=>{ if(isRunning && !isPaused && remaining===total){ t0Ref.current=performance.now(); pausedRef.current=0; distRef.current=0; distRenderRef.current=0; } },[isRunning,isPaused,remaining,total]);
 
   const handleHitRoad=useCallback(()=>{
-    if(isRunning || isBuilding) return;
+    if(isRunning || isBuilding || breakState) return;
     startBuild();
-  },[isRunning,isBuilding,startBuild]);
-  const handlePauseToggle=useCallback(()=>{ if(!isRunning) return; setIsPaused(p=>!p); },[isRunning]);
+  },[isRunning,isBuilding,breakState,startBuild]);
+  const handlePauseToggle=useCallback(()=>{ if(!isRunning || breakState) return; setIsPaused(p=>!p); },[isRunning,breakState]);
   const handleReset=useCallback(()=>{
+    // resetting during a break ends the break quietly (no resume, no row)
+    if(breakState){
+      if(breakTimerRef.current){ window.clearInterval(breakTimerRef.current); breakTimerRef.current=null; }
+      parkedRef.current=false; breakResumeRef.current=false; setBreakState(null);
+    }
     if(isRunning && remaining>0 && remaining<total){
       const elapsedMin=Math.max(1, Math.round((total-remaining)/60));
       const data:Record<string,unknown>={ started_at:startedAtRef.current||new Date().toISOString(), finished_at:new Date().toISOString(), duration_min:elapsedMin, intent:intent||"(no intent)", route:routeName, completed:false, sound_on:humOn, km:Number((distRenderRef.current/42).toFixed(1)) };
@@ -319,7 +333,57 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
     if(isBuilding) cancelBuild();
     setIsRunning(false); setIsPaused(false); setRemaining(routeMin*60); setTotal(routeMin*60); startedAtRef.current=null; distRef.current=0; distRenderRef.current=0;
     try{ localStorage.removeItem("rf_state"); }catch{}
-  },[isRunning,remaining,total,intent,routeName,humOn,routeMin,showLog,loadLogs,isBuilding,cancelBuild,userEmail,csrf]);
+  },[isRunning,remaining,total,intent,routeName,humOn,routeMin,showLog,loadLogs,isBuilding,cancelBuild,userEmail,csrf,breakState]);
+
+  // --- Break mode, Option A manual "Pull over" (local-only, zero sessions rows) ---
+  const playEngineOffClick = useCallback(()=>{
+    try{
+      const Ctx=(window.AudioContext || (window as unknown as {webkitAudioContext:typeof AudioContext}).webkitAudioContext) as typeof AudioContext;
+      const ctx=new Ctx(); const o=ctx.createOscillator(), g=ctx.createGain();
+      o.type="square"; o.frequency.value=160; o.connect(g).connect(ctx.destination);
+      g.gain.setValueAtTime(0.12,ctx.currentTime); g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.09);
+      o.start(); o.stop(ctx.currentTime+0.1); setTimeout(()=>ctx.close().catch(()=>{}),400);
+    }catch{}
+  },[]);
+  const playBreakChime = useCallback(()=>{
+    try{
+      const Ctx=(window.AudioContext || (window as unknown as {webkitAudioContext:typeof AudioContext}).webkitAudioContext) as typeof AudioContext;
+      const ctx=new Ctx();
+      for(const [f,at] of [[660,0],[880,0.18]] as Array<[number,number]>){
+        const o=ctx.createOscillator(), g=ctx.createGain();
+        o.type="sine"; o.frequency.value=f; o.connect(g).connect(ctx.destination);
+        g.gain.setValueAtTime(0,ctx.currentTime+at); g.gain.linearRampToValueAtTime(0.16,ctx.currentTime+at+0.02); g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+at+0.5);
+        o.start(ctx.currentTime+at); o.stop(ctx.currentTime+at+0.55);
+      }
+      setTimeout(()=>ctx.close().catch(()=>{}),1200);
+    }catch{}
+  },[]);
+  const endBreak = useCallback((withChime:boolean)=>{
+    if(breakTimerRef.current){ window.clearInterval(breakTimerRef.current); breakTimerRef.current=null; }
+    parkedRef.current=false;
+    const resume=breakResumeRef.current; breakResumeRef.current=false;
+    setBreakState(null); setShowBreakPicker(false);
+    if(resume) setIsPaused(false); // auto/manual return resumes the run clock
+    if(withChime) playBreakChime();
+  },[playBreakChime]);
+  const startBreak = useCallback((mins:number)=>{
+    if(breakState || isBuilding) return;
+    const secs=Math.max(60, Math.min(1800, Math.round(mins*60)));
+    // pause the run if one is live — pause accounting freezes the session clock for free
+    breakResumeRef.current = isRunning;
+    if(isRunning && !isPaused) setIsPaused(true);
+    parkedRef.current=true; breakLeftRef.current=secs;
+    setBreakState({ total: secs, remaining: secs }); setShowBreakPicker(false);
+    playEngineOffClick();
+    if(breakTimerRef.current) window.clearInterval(breakTimerRef.current);
+    breakTimerRef.current = window.setInterval(()=>{
+      breakLeftRef.current-=1; const left=breakLeftRef.current;
+      if(left<=0){ endBreak(true); } // auto-return + chime (user pick)
+      else setBreakState(prev=> prev ? { ...prev, remaining: left } : prev);
+    },1000) as unknown as number;
+  },[breakState,isBuilding,isRunning,isPaused,playEngineOffClick,endBreak]);
+  // cleanup break ticker on unmount
+  useEffect(()=> ()=>{ if(breakTimerRef.current) window.clearInterval(breakTimerRef.current); },[]);
 
   useEffect(()=>{
     const onKey=(e:KeyboardEvent)=>{
@@ -396,7 +460,7 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
                 {ROUTES.map(r=> {
                   const active = routeName===r.name && !customMin;
                   return (
-                    <button key={r.name} onClick={()=>{ if(isRunning || isBuilding) return; setCustomMin(""); setRouteName(r.name); setRouteMin(r.mins); setTotal(r.mins*60); setRemaining(r.mins*60); }} className={"w-full text-left rounded-xl border p-3 transition "+(active ? "bg-[#00E69A]/10 border-[#00E69A]/30" : "bg-[#1A1E23] border-white/[0.06] hover:border-white/15")}>
+                    <button key={r.name} onClick={()=>{ if(isRunning || isBuilding || breakState) return; setCustomMin(""); setRouteName(r.name); setRouteMin(r.mins); setTotal(r.mins*60); setRemaining(r.mins*60); }} className={"w-full text-left rounded-xl border p-3 transition "+(active ? "bg-[#00E69A]/10 border-[#00E69A]/30" : "bg-[#1A1E23] border-white/[0.06] hover:border-white/15")}>
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-bold text-white">{r.name} → {r.mins}m</span>
                         <span className={"rounded-full px-2 py-0.5 text-[9px] font-extrabold tracking-wide "+(active ? "bg-[#00E69A] text-[#00140e]" : "bg-black border border-white/10 text-zinc-600")}>READY</span>
@@ -406,11 +470,11 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
                   );
                 })}
                 <div className="pt-1">
-                  <input value={customMin} onChange={e=>handleCustomChange(e.target.value)} placeholder="Custom minutes or mm:ss (e.g. 1 or 1:30)" disabled={(isRunning && !isPaused) || isBuilding} className="w-full rounded-full border border-white/10 bg-[#1A1E23] px-3.5 py-2 text-base sm:text-xs text-white outline-none placeholder:text-zinc-600 focus:border-[#00E69A]/40 disabled:opacity-50 disabled:cursor-not-allowed" />
+                  <input value={customMin} onChange={e=>handleCustomChange(e.target.value)} placeholder="Custom minutes or mm:ss (e.g. 1 or 1:30)" disabled={(isRunning && !isPaused) || isBuilding || !!breakState} className="w-full rounded-full border border-white/10 bg-[#1A1E23] px-3.5 py-2 text-base sm:text-xs text-white outline-none placeholder:text-zinc-600 focus:border-[#00E69A]/40 disabled:opacity-50 disabled:cursor-not-allowed" />
                   {customMin.trim() && parsePreset(customMin.trim())===null && !((isRunning && !isPaused) || isBuilding) && (
                     <div className="mt-1 px-2 text-[10px] text-amber-400">Enter 1–180 or mm:ss (e.g. 1:30)</div>
                   )}
-                  {(isRunning && !isPaused) || isBuilding ? (
+                  {(isRunning && !isPaused) || isBuilding || breakState ? (
                     <div className="mt-1 px-2 text-[10px] text-zinc-500">Custom locked while running — pause to edit</div>
                   ) : null}
                 </div>
@@ -463,12 +527,32 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
                   <a href="/signup" className="rounded-full bg-white px-3 py-1 text-xs font-medium text-black hover:bg-zinc-200">Sync →</a>
                 </div>
               )}
+              {/* Pull over — manual break (Option A): local-only, zero sessions rows */}
+              {!breakState ? (
+                showBreakPicker ? (
+                  <div className="flex gap-1.5 justify-center items-center">
+                    {[2,5,10,15].map(m=> (
+                      <button key={m} onClick={()=>startBreak(m)} className="touch-44 rounded-full px-3 text-xs font-bold border bg-[#1A1E23] border-white/10 text-zinc-300 hover:border-[#00E69A]/40 min-w-[44px]">{m}m</button>
+                    ))}
+                    <button onClick={()=>setShowBreakPicker(false)} aria-label="Cancel break picker" className="touch-44 grid h-11 w-11 place-items-center rounded-full border border-white/10 text-zinc-500">✕</button>
+                  </div>
+                ) : (
+                  <button onClick={()=>setShowBreakPicker(true)} disabled={isBuilding} className="touch-44 w-full rounded-full border border-white/10 bg-white/[0.04] px-3 text-xs font-bold text-zinc-300 hover:border-[#00E69A]/40 disabled:opacity-50 disabled:cursor-not-allowed">🅿 Pull over · break</button>
+                )
+              ) : (
+                <div className="rounded-xl border border-[#00E69A]/30 bg-[#00E69A]/10 p-3 text-center">
+                  <div className="text-xs font-bold text-white">🅿 Parked · break {fmt(breakState.remaining)}</div>
+                  <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-black"><div className="h-full rounded-full bg-[#00E69A]" style={{ width: `${breakState.total ? Math.round(((breakState.total-breakState.remaining)/breakState.total)*100) : 0}%` }} /></div>
+                  <div className="mt-0.5 text-[9px] font-medium text-zinc-500">fuel {breakState.total ? Math.round(((breakState.total-breakState.remaining)/breakState.total)*100) : 0}% · auto-returns + chime</div>
+                  <button onClick={()=>endBreak(true)} className="touch-44 mt-2 w-full rounded-full bg-[#00E69A] px-3 text-xs font-bold text-[#00140e]">Back on road →</button>
+                </div>
+              )}
               {/* Quick pills */}
               <div className="flex gap-1.5 justify-center">
                 {[25,50,90].map(m=> (
-                  <button key={m} onClick={()=>{ if(isRunning || isBuilding) return; const r=ROUTES.find(x=>x.mins===m); if(r){ setCustomMin(""); setRouteName(r.name); setRouteMin(r.mins); setTotal(r.mins*60); setRemaining(r.mins*60); }}} className={"rounded-full px-3 py-1 text-xs font-bold border "+(routeMin===m && !customMin ? "bg-[#00E69A] border-[#00E69A] text-[#00140e]" : "bg-[#1A1E23] border-white/10 text-zinc-400")}>{m}m</button>
+                  <button key={m} onClick={()=>{ if(isRunning || isBuilding || breakState) return; const r=ROUTES.find(x=>x.mins===m); if(r){ setCustomMin(""); setRouteName(r.name); setRouteMin(r.mins); setTotal(r.mins*60); setRemaining(r.mins*60); }}} className={"rounded-full px-3 py-1 text-xs font-bold border "+(routeMin===m && !customMin ? "bg-[#00E69A] border-[#00E69A] text-[#00140e]" : "bg-[#1A1E23] border-white/10 text-zinc-400")}>{m}m</button>
                 ))}
-                <button onClick={()=>{ if((isRunning && !isPaused) || isBuilding) return; const v=prompt("Custom minutes (1-180) or mm:ss"); if(v){ handleCustomChange(v); } }} disabled={(isRunning && !isPaused) || isBuilding} className={"rounded-full px-3 py-1 text-xs font-bold border disabled:opacity-50 disabled:cursor-not-allowed "+(routeName==="Custom" ? "bg-[#00E69A] border-[#00E69A] text-[#00140e]" : "bg-[#1A1E23] border-white/10 text-zinc-400")}>Custom</button>
+                <button onClick={()=>{ if((isRunning && !isPaused) || isBuilding || breakState) return; const v=prompt("Custom minutes (1-180) or mm:ss"); if(v){ handleCustomChange(v); } }} disabled={(isRunning && !isPaused) || isBuilding || !!breakState} className={"rounded-full px-3 py-1 text-xs font-bold border disabled:opacity-50 disabled:cursor-not-allowed "+(routeName==="Custom" ? "bg-[#00E69A] border-[#00E69A] text-[#00140e]" : "bg-[#1A1E23] border-white/10 text-zinc-400")}>Custom</button>
               </div>
               <div className="text-center text-[11px] italic text-zinc-600">“Deep work now, freedom later”</div>
             </div>
@@ -477,7 +561,7 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
 
         {/* Canvas - right side like Image 1, fullscreen like Image 2 */}
         <div ref={canvasWrapRef} className={"relative flex flex-1 overflow-hidden bg-[#040709] "+(isFullscreen ? "fixed inset-0 z-30 rounded-none border-0 fs-full" : "rounded-none lg:rounded-2xl border-0 lg:border border-white/10")}>
-          <RoadtripCanvas distRef={distRef} distRenderRef={distRenderRef} seed={seed} progress={progress} isRunningRef={isRunningRef} isPausedRef={isPausedRef} pausedOffRef={pausedOffRef} />
+          <RoadtripCanvas distRef={distRef} distRenderRef={distRenderRef} seed={seed} progress={progress} isRunningRef={isRunningRef} isPausedRef={isPausedRef} pausedOffRef={pausedOffRef} parkedRef={parkedRef} parkTRef={parkTRef} />
           {/* Top pill - fullscreen shows "No intent ..." like Image 2, windowed shows intent */}
           <div className={"absolute left-1/2 z-10 -translate-x-1/2 "+(isFullscreen ? "top-3" : "top-3 hidden lg:flex")+" "+(!controlsVisible && isFullscreen ? "opacity-0 pointer-events-none" : "")}>
             <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-[#1A1E23]/90 px-3 py-1.5 text-xs backdrop-blur-xl">
@@ -505,6 +589,13 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
           {isFullscreen && (
             <div className="absolute bottom-4 left-1/2 z-10 w-[min(520px,70vw)] -translate-x-1/2 rounded-full border border-white/10 bg-[#1A1E23]/90 p-1.5 backdrop-blur-xl">
               <div className="h-1.5 overflow-hidden rounded-full bg-black"><div className="h-full rounded-full bg-[#00E69A]" style={{ width: `${pct}%` }} /></div>
+            </div>
+          )}
+          {/* Parked badge — visible windowed + fullscreen, with Back on road exit */}
+          {breakState && (
+            <div className="absolute bottom-3 left-3 z-10 flex items-center gap-2 rounded-full border border-[#00E69A]/30 bg-[#1A1E23]/90 py-1.5 pl-3 pr-1.5 backdrop-blur-xl">
+              <span className="text-[11px] font-bold text-white">🅿 PARKED · {fmt(breakState.remaining)}</span>
+              <button onClick={()=>endBreak(true)} className="touch-44 rounded-full bg-[#00E69A] px-3 text-[11px] font-bold text-[#00140e]">Back on road</button>
             </div>
           )}
           {/* 5s building dedication overlay - varied every start */}

@@ -9,11 +9,13 @@ type Props = {
   isRunningRef: React.MutableRefObject<boolean>;
   isPausedRef: React.MutableRefObject<boolean>;
   pausedOffRef: React.MutableRefObject<number>;
+  parkedRef: React.MutableRefObject<boolean>;
+  parkTRef: React.MutableRefObject<number>;
 };
 
 const SCENERY_SPEED = 18;
 
-export default function RoadtripCanvas({ distRef: _distRef, distRenderRef, seed, progress, isRunningRef, isPausedRef, pausedOffRef }: Props) {
+export default function RoadtripCanvas({ distRef: _distRef, distRenderRef, seed, progress, isRunningRef, isPausedRef, pausedOffRef, parkedRef, parkTRef }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const idlePhaseRef = useRef(0);
 
@@ -135,7 +137,7 @@ export default function RoadtripCanvas({ distRef: _distRef, distRenderRef, seed,
       for (let i = 0; i < n - 1; i++) segLens.push(Math.hypot(centers[i + 1] - centers[i], ys[i + 1] - ys[i]));
       const dash = 14 * dpr, gap = 14 * dpr, pat = dash + gap;
       let off: number;
-      if (isPausedRef.current) off = pausedOffRef.current;
+      if (parkedRef.current || isPausedRef.current) off = pausedOffRef.current;
       else if (isRunningRef.current) { off = (d * 0.18) % pat; pausedOffRef.current = off; }
       else { off = idlePhase * pat; pausedOffRef.current = off; }
       let acc = 0;
@@ -215,11 +217,19 @@ export default function RoadtripCanvas({ distRef: _distRef, distRenderRef, seed,
           ctx.fill();
         }
       }
-      const nearCx = centers[n - 1], lean = (centers[n - 1] - centers[n - 3]) * 0.1, bob = 0.35 * Math.sin(Date.now() * 0.0022 + progress * 3);
+      const nearCx = centers[n - 1], lean = (centers[n - 1] - centers[n - 3]) * 0.1;
+      // Break mode: ease onto the shoulder, kill the bob, blink hazards.
+      const parked = parkedRef.current;
+      parkTRef.current += ((parked ? 1 : 0) - parkTRef.current) * 0.06;
+      if (Math.abs(parkTRef.current - (parked ? 1 : 0)) < 0.002) parkTRef.current = parked ? 1 : 0;
+      const parkT = parkTRef.current;
+      const bob = parked ? 0 : 0.35 * Math.sin(Date.now() * 0.0022 + progress * 3);
       let steer = 0;
       if (n >= 6) steer = (roadCenter(d + 22) - roadCenter(d + 6)) * 0.05;
       const scaleCar = 0.85, carW = 14 * scaleCar * dpr, carH = 8 * scaleCar * dpr;
-      const carX = Math.max(carW + 6 * dpr, Math.min(W - carW - 6 * dpr, nearCx + lean + steer)), carY = H - 14 * dpr + bob * dpr;
+      const cruiseX = Math.max(carW + 6 * dpr, Math.min(W - carW - 6 * dpr, nearCx + lean + steer));
+      const shoulderX = Math.max(carW + 6 * dpr, Math.min(W - carW - 6 * dpr, centers[n - 1] + halfs[n - 1] + 26 * dpr));
+      const carX = cruiseX + (shoulderX - cruiseX) * parkT, carY = H - 14 * dpr + bob * dpr;
       ctx.fillStyle = "rgba(0,0,0,0.6)";
       ctx.beginPath();
       ctx.ellipse(carX, carY + carH - 1 * dpr, carW, 3 * dpr, 0, 0, Math.PI * 2);
@@ -260,11 +270,19 @@ export default function RoadtripCanvas({ distRef: _distRef, distRenderRef, seed,
       ctx.beginPath();
       ctx.ellipse(carX + carW - 2 * dpr, carY - 0.5 * dpr, 1.5 * dpr, 1.2 * dpr, 0, 0, Math.PI * 2);
       ctx.fill();
+      if (parkT > 0.5) {
+        // hazard blink while parked: alternate amber/red at ~2Hz
+        const phase = Math.floor(Date.now() / 500) % 2 === 0;
+        ctx.fillStyle = phase ? "#ffaa00" : "#ff3b30";
+        ctx.globalAlpha = 0.9;
+        for (const dx of [-carW + 1 * dpr, carW - 1 * dpr]) { ctx.beginPath(); ctx.arc(carX + dx, carY - carH - 0.5 * dpr, 1.6 * dpr, 0, Math.PI * 2); ctx.fill(); }
+        ctx.globalAlpha = 1;
+      }
       raf = requestAnimationFrame(draw);
     };
     raf = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(raf);
-  }, [seed, progress, distRenderRef, isRunningRef, isPausedRef, pausedOffRef]);
+  }, [seed, progress, distRenderRef, isRunningRef, isPausedRef, pausedOffRef, parkedRef, parkTRef]);
 
   return <canvas ref={canvasRef} style={{ width: "100%", height: "100%", display: "block" }} />;
 }
