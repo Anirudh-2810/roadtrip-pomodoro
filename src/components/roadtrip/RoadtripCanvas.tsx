@@ -11,12 +11,11 @@ type Props = {
   pausedOffRef: React.MutableRefObject<number>;
   parkedRef: React.MutableRefObject<boolean>;
   parkTRef: React.MutableRefObject<number>;
-  parkAnimRef: React.MutableRefObject<{ from: number; t0: number; dir: boolean }>;
 };
 
 const SCENERY_SPEED = 18;
 
-export default function RoadtripCanvas({ distRef: _distRef, distRenderRef, seed, progress, isRunningRef, isPausedRef, pausedOffRef, parkedRef, parkTRef, parkAnimRef }: Props) {
+export default function RoadtripCanvas({ distRef: _distRef, distRenderRef, seed, progress, isRunningRef, isPausedRef, pausedOffRef, parkedRef, parkTRef }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const idlePhaseRef = useRef(0);
 
@@ -138,7 +137,9 @@ export default function RoadtripCanvas({ distRef: _distRef, distRenderRef, seed,
       for (let i = 0; i < n - 1; i++) segLens.push(Math.hypot(centers[i + 1] - centers[i], ys[i + 1] - ys[i]));
       const dash = 14 * dpr, gap = 14 * dpr, pat = dash + gap;
       let off: number;
-      if (parkedRef.current || isPausedRef.current) off = pausedOffRef.current;
+      // dashes derive from distance d: frozen exactly when the world is
+      // (paused/parked), still decelerating through pull-over/merge.
+      if (isPausedRef.current || parkedRef.current) { off = (d * 0.18) % pat; pausedOffRef.current = off; }
       else if (isRunningRef.current) { off = (d * 0.18) % pat; pausedOffRef.current = off; }
       else { off = idlePhase * pat; pausedOffRef.current = off; }
       let acc = 0;
@@ -219,17 +220,8 @@ export default function RoadtripCanvas({ distRef: _distRef, distRenderRef, seed,
         }
       }
       const nearCx = centers[n - 1], lean = (centers[n - 1] - centers[n - 3]) * 0.1;
-      // Break mode: slow cinematic pull-over onto the road's edge line.
-      // Time-based smootherstep tween (4.5s out, 3s back) — survives effect
-      // re-subscribes because tween state lives in parkAnimRef, not the closure.
-      const parked = parkedRef.current;
-      const nowMs = performance.now();
-      const anim = parkAnimRef.current;
-      if (anim.dir !== parked) { anim.dir = parked; anim.from = parkTRef.current; anim.t0 = nowMs; }
-      const parkDur = parked ? 4500 : 3000;
-      const k = Math.min(1, (nowMs - anim.t0) / parkDur);
-      const s = k * k * k * (k * (k * 6 - 15) + 10);
-      parkTRef.current = anim.from + ((parked ? 1 : 0) - anim.from) * s;
+      // parkT is driven per-frame by the Experience drive model (pull → park → merge);
+      // canvas only renders. Bob fades as the car settles.
       const parkT = parkTRef.current;
       const bob = 0.35 * Math.sin(Date.now() * 0.0022 + progress * 3) * (1 - parkT);
       let steer = 0;
@@ -291,7 +283,7 @@ export default function RoadtripCanvas({ distRef: _distRef, distRenderRef, seed,
     };
     raf = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(raf);
-  }, [seed, progress, distRenderRef, isRunningRef, isPausedRef, pausedOffRef, parkedRef, parkTRef, parkAnimRef]);
+  }, [seed, progress, distRenderRef, isRunningRef, isPausedRef, pausedOffRef, parkedRef, parkTRef]);
 
   return <canvas ref={canvasRef} style={{ width: "100%", height: "100%", display: "block" }} />;
 }

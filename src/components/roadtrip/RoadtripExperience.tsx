@@ -65,14 +65,28 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
   // Never creates sessions rows; run clock stays frozen via the pause path.
   const parkedRef = useRef(false);
   const parkTRef = useRef(0);
-  const parkAnimRef = useRef({ from: 0, t0: 0, dir: false });
-  const [breakState, setBreakState] = useState<{ total: number; remaining: number } | null>(null);
+  const [breakState, setBreakState] = useState<{ total: number; remaining: number; settled: boolean } | null>(null);
   const [showBreakPicker, setShowBreakPicker] = useState(false);
   const breakTimerRef = useRef<number|null>(null);
   const breakLeftRef = useRef(0);
+  const breakPendingRef = useRef(0);
   const breakResumeRef = useRef(false);
-  const resumeTimerRef = useRef<number|null>(null);
   const mergingRef = useRef(false);
+  const chimeRef = useRef(true);
+  // Drive model for smooth pull-over: cruise → pull → park → merge → cruise.
+  // Pull/merge freeze the wall clock and integrate distance manually with a
+  // ramped speed factor, so the car steers over WHILE the world decelerates.
+  const speedRef = useRef(1);
+  const pullPhaseRef = useRef<"cruise"|"pull"|"park"|"merge">("cruise");
+  const phaseT0Ref = useRef(0);
+  const lastTickRef = useRef(0);
+  const lastVolRef = useRef(-1);
+  const manualOffsetRef = useRef(0);
+  const mergeFromRef = useRef(1);
+  const smoother = useCallback((t:number)=> t*t*t*(t*(t*6-15)+10),[]);
+  const volRef = useRef(vol);
+  useEffect(()=>{ volRef.current=vol; },[vol]);
+  const driveVol = useCallback((v:number)=>{ const q=Math.round(v*60); if(q!==lastVolRef.current){ lastVolRef.current=q; try{ setRoadtripVol(v); }catch{} } },[]);
   const [syncState, setSyncState] = useState<"idle"|"saving"|"saved"|"local"|"failed">("idle");
   const progress = total ? (total-remaining)/total : 0;
 
@@ -285,62 +299,7 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
     try{ localStorage.removeItem("rf_state"); }catch{}
   },[total,remaining,intent,routeName,humOn,showLog,loadLogs,userEmail,csrf]);
 
-  useEffect(()=>{
-    let raf=0;
-    const tick=()=>{
-      if(isRunning && !isPaused){
-        const elapsed=(performance.now()-t0Ref.current-pausedRef.current)/1000;
-        const raw=Math.min(elapsed*SCENERY_SPEED*0.35, total*SCENERY_SPEED*0.35);
-        const p=Math.min(elapsed/total,1);
-        const ease=(t:number)=>1-Math.pow(1-t,3);
-        const eased= p>0.88 ? total*SCENERY_SPEED*0.35*(0.88+0.12*ease((p-0.88)/0.12)) : raw;
-        distRef.current=eased;
-        distRenderRef.current+=(distRef.current-distRenderRef.current)*0.14;
-        const nextRemaining=Math.max(0, total-Math.floor(elapsed));
-        if(nextRemaining!==remaining){
-          if(nextRemaining<=0){ setRemaining(0); setIsRunning(false); void onFinish(); }
-          else setRemaining(nextRemaining);
-        } else if(elapsed>=total){ if(remaining!==0){ setRemaining(0); setIsRunning(false); void onFinish(); } }
-      }
-      raf=requestAnimationFrame(tick);
-    };
-    raf=requestAnimationFrame(tick);
-    return()=>cancelAnimationFrame(raf);
-  },[isRunning,isPaused,total,remaining,onFinish]);
-  useEffect(()=>{ if(isRunning && !isPaused && remaining===total){ t0Ref.current=performance.now(); pausedRef.current=0; distRef.current=0; distRenderRef.current=0; } },[isRunning,isPaused,remaining,total]);
-
-  const handleHitRoad=useCallback(()=>{
-    if(isRunning || isBuilding || breakState) return;
-    startBuild();
-  },[isRunning,isBuilding,breakState,startBuild]);
-  const handlePauseToggle=useCallback(()=>{ if(!isRunning || breakState) return; setIsPaused(p=>!p); },[isRunning,breakState]);
-  const handleReset=useCallback(()=>{
-    // resetting during a break ends the break quietly (no resume, no row)
-    if(breakState){
-      if(breakTimerRef.current){ window.clearInterval(breakTimerRef.current); breakTimerRef.current=null; }
-      if(resumeTimerRef.current){ window.clearTimeout(resumeTimerRef.current); resumeTimerRef.current=null; }
-      mergingRef.current=false;
-      parkedRef.current=false; breakResumeRef.current=false; setBreakState(null);
-    }
-    if(isRunning && remaining>0 && remaining<total){
-      const elapsedMin=Math.max(1, Math.round((total-remaining)/60));
-      const data:Record<string,unknown>={ started_at:startedAtRef.current||new Date().toISOString(), finished_at:new Date().toISOString(), duration_min:elapsedMin, intent:intent||"(no intent)", route:routeName, completed:false, sound_on:humOn, km:Number((distRenderRef.current/42).toFixed(1)) };
-      try{ const arr=JSON.parse(localStorage.getItem("rf_sessions")||"[]") as unknown[]; (arr as unknown[]).push(data); localStorage.setItem("rf_sessions", JSON.stringify((arr as unknown[]).slice(-50))); if(showLog) loadLogs(); }catch{}
-      const row={ started_at:data.started_at as string, finished_at:data.finished_at as string, duration_sec:elapsedMin*60, preset:routeName, intent:intent||undefined, completed:false, route:routeName };
-      saveGuestSession(row as unknown as Parameters<typeof saveGuestSession>[0]);
-      // incomplete rows also belong to the cloud (no email for breaks)
-      if(userEmail){
-        const headers:Record<string,string>={"Content-Type":"application/json"}; if(csrf) headers["x-csrf-token"]=csrf;
-        fetch("/api/sessions",{method:"POST",headers,body:JSON.stringify(row)}).then(async res=>{ try{ const j=await res.json(); if(res.ok && j.mocked!==true) removeGuestSession(row.started_at); }catch{} }).catch(()=>{});
-      }
-    }
-    // cancel building if resetting during build
-    if(isBuilding) cancelBuild();
-    setIsRunning(false); setIsPaused(false); setRemaining(routeMin*60); setTotal(routeMin*60); startedAtRef.current=null; distRef.current=0; distRenderRef.current=0;
-    try{ localStorage.removeItem("rf_state"); }catch{}
-  },[isRunning,remaining,total,intent,routeName,humOn,routeMin,showLog,loadLogs,isBuilding,cancelBuild,userEmail,csrf,breakState]);
-
-  // --- Break mode, Option A manual "Pull over" (local-only, zero sessions rows) ---
+  // --- Break sounds (declared before the RAF tick, which calls them) ---
   const playEngineOffClick = useCallback(()=>{
     try{
       const Ctx=(window.AudioContext || (window as unknown as {webkitAudioContext:typeof AudioContext}).webkitAudioContext) as typeof AudioContext;
@@ -363,38 +322,138 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
       setTimeout(()=>ctx.close().catch(()=>{}),1200);
     }catch{}
   },[]);
+  // --- Break mode, Option A manual "Pull over" (local-only, zero sessions rows) ---
+  // (declared before the RAF tick — the tick drives pull/settle/merge)
   const endBreak = useCallback((withChime:boolean)=>{
     if(mergingRef.current) return; // merge already in flight — ignore double-taps
     if(breakTimerRef.current){ window.clearInterval(breakTimerRef.current); breakTimerRef.current=null; }
-    parkedRef.current=false;
-    const resume=breakResumeRef.current; breakResumeRef.current=false;
+    const phase=pullPhaseRef.current;
+    if(phase!=="pull" && phase!=="park") return;
+    // merge from wherever the car is now (handles Back-on-road mid-pull-over)
+    mergeFromRef.current=parkTRef.current; chimeRef.current=withChime;
+    pullPhaseRef.current="merge"; phaseT0Ref.current=performance.now(); lastTickRef.current=performance.now();
+    mergingRef.current=true;
     setBreakState(null); setShowBreakPicker(false);
-    // cinematic merge: car pulls out first (~1s head start), road catches up under it
-    if(resume){
-      mergingRef.current=true;
-      if(resumeTimerRef.current) window.clearTimeout(resumeTimerRef.current);
-      resumeTimerRef.current = window.setTimeout(()=>{ setIsPaused(false); mergingRef.current=false; resumeTimerRef.current=null; },1000) as unknown as number;
-    }
-    if(withChime) playBreakChime();
-  },[playBreakChime]);
-  const startBreak = useCallback((mins:number)=>{
-    if(breakState || isBuilding || mergingRef.current) return;
-    const secs=Math.max(60, Math.min(1800, Math.round(mins*60)));
-    // pause the run if one is live — pause accounting freezes the session clock for free
-    breakResumeRef.current = isRunning;
-    if(isRunning && !isPaused) setIsPaused(true);
-    parkedRef.current=true; breakLeftRef.current=secs;
-    setBreakState({ total: secs, remaining: secs }); setShowBreakPicker(false);
-    playEngineOffClick();
+    // rejoin while merging: hum swells with speed, wall stays frozen till merge ends
+    if(breakResumeRef.current){ breakResumeRef.current=false; setIsPaused(false); }
+  },[]);
+  const beginBreakCountdown = useCallback(()=>{
+    const secs=breakPendingRef.current;
+    breakLeftRef.current=secs;
+    setBreakState(prev=> prev ? { ...prev, total: secs, remaining: secs, settled: true } : prev);
     if(breakTimerRef.current) window.clearInterval(breakTimerRef.current);
     breakTimerRef.current = window.setInterval(()=>{
       breakLeftRef.current-=1; const left=breakLeftRef.current;
-      if(left<=0){ endBreak(true); } // auto-return + chime (user pick)
-      else setBreakState(prev=> prev ? { ...prev, remaining: left } : prev);
+      if(left<=0){ endBreak(true); } // auto-return + chime at merge end
+      else setBreakState(prev=> prev? {...prev, remaining:left} : prev);
     },1000) as unknown as number;
-  },[breakState,isBuilding,isRunning,isPaused,playEngineOffClick,endBreak]);
-  // cleanup break + resume timers on unmount
-  useEffect(()=> ()=>{ if(breakTimerRef.current) window.clearInterval(breakTimerRef.current); if(resumeTimerRef.current) window.clearTimeout(resumeTimerRef.current); },[]);
+  },[endBreak]);
+  const settleBreak = useCallback(()=>{
+    // pull-over complete: car settled on the edge line — now the break begins
+    pullPhaseRef.current="park"; speedRef.current=0; parkTRef.current=1; driveVol(0);
+    if(isRunningRef.current) setIsPaused(true); // wall already frozen; this stops the hum
+    playEngineOffClick();
+    beginBreakCountdown();
+  },[playEngineOffClick,beginBreakCountdown,driveVol]);
+  const startBreak = useCallback((mins:number)=>{
+    if(breakState || isBuilding || mergingRef.current) return;
+    const secs=Math.max(60, Math.min(1800, Math.round(mins*60)));
+    breakPendingRef.current=secs; breakResumeRef.current=isRunning;
+    if(isRunning && isPaused) setIsPaused(false); // pull-over drives; pause lands at settle
+    parkedRef.current=true;
+    pullPhaseRef.current="pull"; phaseT0Ref.current=performance.now(); lastTickRef.current=performance.now();
+    setBreakState({ total: secs, remaining: secs, settled: false }); setShowBreakPicker(false);
+  },[breakState,isBuilding,isRunning,isPaused]);
+  useEffect(()=>{
+    let raf=0;
+    const tick=()=>{
+      const phase=pullPhaseRef.current;
+      const inTransition=phase==="pull"||phase==="merge";
+      if((isRunning && !isPaused)||(!isRunning && inTransition)){
+        const now=performance.now();
+        const dt=Math.min(0.1, lastTickRef.current ? (now-lastTickRef.current)/1000 : 0.016);
+        lastTickRef.current=now;
+        if(inTransition){
+          // wall clock frozen — integrate distance manually with ramped speed
+          t0Ref.current+=dt*1000;
+          const t=(now-phaseT0Ref.current)/1000;
+          if(phase==="pull"){
+            const kk=Math.min(1,t/4.5), s=smoother(kk), speed=1-s;
+            speedRef.current=speed; parkTRef.current=s;
+            if(isRunning){ const incr=SCENERY_SPEED*0.35*speed*dt; distRef.current+=incr; manualOffsetRef.current+=incr; driveVol(volRef.current*speed); }
+            if(kk>=1) settleBreak();
+          } else {
+            const dur=3*Math.max(0.25,mergeFromRef.current);
+            const kk=Math.min(1,t/dur), s=smoother(kk);
+            const park=mergeFromRef.current*(1-s), speed=1-park;
+            speedRef.current=speed; parkTRef.current=park;
+            if(isRunning){ const incr=SCENERY_SPEED*0.35*speed*dt; distRef.current+=incr; manualOffsetRef.current+=incr; driveVol(volRef.current*speed); }
+            if(kk>=1){
+              pullPhaseRef.current="cruise"; parkedRef.current=false;
+              speedRef.current=(isRunningRef.current && !isPausedRef.current)?1:0; parkTRef.current=0;
+              mergingRef.current=false; driveVol(volRef.current);
+              if(chimeRef.current) playBreakChime();
+            }
+          }
+        } else {
+          speedRef.current=(isRunning && !isPaused)?1:0;
+          if(isRunning && !isPaused){
+            const elapsed=(now-t0Ref.current-pausedRef.current)/1000;
+            const raw=Math.min(elapsed*SCENERY_SPEED*0.35, total*SCENERY_SPEED*0.35);
+            const p=Math.min(elapsed/total,1);
+            const ease=(t:number)=>1-Math.pow(1-t,3);
+            const eased= p>0.88 ? total*SCENERY_SPEED*0.35*(0.88+0.12*ease((p-0.88)/0.12)) : raw;
+            distRef.current=eased+manualOffsetRef.current;
+            const nextRemaining=Math.max(0, total-Math.floor(elapsed));
+            if(nextRemaining!==remaining){
+              if(nextRemaining<=0){ setRemaining(0); setIsRunning(false); void onFinish(); }
+              else setRemaining(nextRemaining);
+            } else if(elapsed>=total){ if(remaining!==0){ setRemaining(0); setIsRunning(false); void onFinish(); } }
+          }
+        }
+        distRenderRef.current+=(distRef.current-distRenderRef.current)*0.14;
+      }
+      raf=requestAnimationFrame(tick);
+    };
+    raf=requestAnimationFrame(tick);
+    return()=>cancelAnimationFrame(raf);
+  },[isRunning,isPaused,total,remaining,onFinish,smoother,driveVol,playBreakChime,settleBreak]);
+  useEffect(()=>{ if(isRunning && !isPaused && remaining===total){ t0Ref.current=performance.now(); pausedRef.current=0; distRef.current=0; distRenderRef.current=0; manualOffsetRef.current=0; speedRef.current=1; pullPhaseRef.current="cruise"; parkTRef.current=0; } },[isRunning,isPaused,remaining,total]);
+
+  const handleHitRoad=useCallback(()=>{
+    if(isRunning || isBuilding || breakState) return;
+    startBuild();
+  },[isRunning,isBuilding,breakState,startBuild]);
+  const handlePauseToggle=useCallback(()=>{ if(!isRunning || breakState) return; setIsPaused(p=>!p); },[isRunning,breakState]);
+  const handleReset=useCallback(()=>{
+    // resetting during a break ends the break quietly (no resume, no row)
+    if(breakState){
+      if(breakTimerRef.current){ window.clearInterval(breakTimerRef.current); breakTimerRef.current=null; }
+      mergingRef.current=false;
+      pullPhaseRef.current="cruise"; speedRef.current=1; parkTRef.current=0; manualOffsetRef.current=0;
+      parkedRef.current=false; breakResumeRef.current=false; setBreakState(null);
+    }
+    if(isRunning && remaining>0 && remaining<total){
+      const elapsedMin=Math.max(1, Math.round((total-remaining)/60));
+      const data:Record<string,unknown>={ started_at:startedAtRef.current||new Date().toISOString(), finished_at:new Date().toISOString(), duration_min:elapsedMin, intent:intent||"(no intent)", route:routeName, completed:false, sound_on:humOn, km:Number((distRenderRef.current/42).toFixed(1)) };
+      try{ const arr=JSON.parse(localStorage.getItem("rf_sessions")||"[]") as unknown[]; (arr as unknown[]).push(data); localStorage.setItem("rf_sessions", JSON.stringify((arr as unknown[]).slice(-50))); if(showLog) loadLogs(); }catch{}
+      const row={ started_at:data.started_at as string, finished_at:data.finished_at as string, duration_sec:elapsedMin*60, preset:routeName, intent:intent||undefined, completed:false, route:routeName };
+      saveGuestSession(row as unknown as Parameters<typeof saveGuestSession>[0]);
+      // incomplete rows also belong to the cloud (no email for breaks)
+      if(userEmail){
+        const headers:Record<string,string>={"Content-Type":"application/json"}; if(csrf) headers["x-csrf-token"]=csrf;
+        fetch("/api/sessions",{method:"POST",headers,body:JSON.stringify(row)}).then(async res=>{ try{ const j=await res.json(); if(res.ok && j.mocked!==true) removeGuestSession(row.started_at); }catch{} }).catch(()=>{});
+      }
+    }
+    // cancel building if resetting during build
+    if(isBuilding) cancelBuild();
+    setIsRunning(false); setIsPaused(false); setRemaining(routeMin*60); setTotal(routeMin*60); startedAtRef.current=null; distRef.current=0; distRenderRef.current=0;
+    try{ localStorage.removeItem("rf_state"); }catch{}
+  },[isRunning,remaining,total,intent,routeName,humOn,routeMin,showLog,loadLogs,isBuilding,cancelBuild,userEmail,csrf,breakState]);
+
+  // --- Break mode UI guards live below; handlers above feed the RAF tick ---
+  // cleanup break ticker on unmount
+  useEffect(()=> ()=>{ if(breakTimerRef.current) window.clearInterval(breakTimerRef.current); },[]);
 
   useEffect(()=>{
     const onKey=(e:KeyboardEvent)=>{
@@ -552,7 +611,7 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
                 )
               ) : (
                 <div className="rounded-xl border border-[#00E69A]/30 bg-[#00E69A]/10 p-3 text-center">
-                  <div className="text-xs font-bold text-white">🅿 Parked · break {fmt(breakState.remaining)}</div>
+                  <div className="text-xs font-bold text-white">{breakState.settled ? `🅿 Parked · break ${fmt(breakState.remaining)}` : "Pulling over…"}</div>
                   <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-black"><div className="h-full rounded-full bg-[#00E69A]" style={{ width: `${breakState.total ? Math.round(((breakState.total-breakState.remaining)/breakState.total)*100) : 0}%` }} /></div>
                   <div className="mt-0.5 text-[9px] font-medium text-zinc-500">fuel {breakState.total ? Math.round(((breakState.total-breakState.remaining)/breakState.total)*100) : 0}% · auto-returns + chime</div>
                   <button onClick={()=>endBreak(true)} className="touch-44 mt-2 w-full rounded-full bg-[#00E69A] px-3 text-xs font-bold text-[#00140e]">Back on road →</button>
@@ -572,7 +631,7 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
 
         {/* Canvas - right side like Image 1, fullscreen like Image 2 */}
         <div ref={canvasWrapRef} className={"relative flex flex-1 overflow-hidden bg-[#040709] "+(isFullscreen ? "fixed inset-0 z-30 rounded-none border-0 fs-full" : "rounded-none lg:rounded-2xl border-0 lg:border border-white/10")}>
-          <RoadtripCanvas distRef={distRef} distRenderRef={distRenderRef} seed={seed} progress={progress} isRunningRef={isRunningRef} isPausedRef={isPausedRef} pausedOffRef={pausedOffRef} parkedRef={parkedRef} parkTRef={parkTRef} parkAnimRef={parkAnimRef} />
+          <RoadtripCanvas distRef={distRef} distRenderRef={distRenderRef} seed={seed} progress={progress} isRunningRef={isRunningRef} isPausedRef={isPausedRef} pausedOffRef={pausedOffRef} parkedRef={parkedRef} parkTRef={parkTRef} />
           {/* Top pill - fullscreen shows "No intent ..." like Image 2, windowed shows intent */}
           <div className={"absolute left-1/2 z-10 -translate-x-1/2 "+(isFullscreen ? "top-3" : "top-3 hidden lg:flex")+" "+(!controlsVisible && isFullscreen ? "opacity-0 pointer-events-none" : "")}>
             <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-[#1A1E23]/90 px-3 py-1.5 text-xs backdrop-blur-xl">
@@ -605,7 +664,7 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
           {/* Parked badge — visible windowed + fullscreen, with Back on road exit */}
           {breakState && (
             <div className="absolute bottom-3 left-3 z-10 flex items-center gap-2 rounded-full border border-[#00E69A]/30 bg-[#1A1E23]/90 py-1.5 pl-3 pr-1.5 backdrop-blur-xl">
-              <span className="text-[11px] font-bold text-white">🅿 PARKED · {fmt(breakState.remaining)}</span>
+              <span className="text-[11px] font-bold text-white">{breakState.settled ? `🅿 PARKED · ${fmt(breakState.remaining)}` : "Pulling over…"}</span>
               <button onClick={()=>endBreak(true)} className="touch-44 rounded-full bg-[#00E69A] px-3 text-[11px] font-bold text-[#00140e]">Back on road</button>
             </div>
           )}
