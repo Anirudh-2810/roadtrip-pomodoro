@@ -1,7 +1,11 @@
 {
-  "name": "pomodoro-web",
+  "name": "roadtrip-pomodoro",
   "version": "0.1.0",
   "private": true,
+  "author": "Anirudh-2810",
+  "license": "MIT",
+  "repository": "https://github.com/Anirudh-2810/roadtrip-pomodoro",
+  "homepage": "https://github.com/Anirudh-2810/roadtrip-pomodoro",
   "scripts": {
     "dev": "next dev",
     "prebuild": "node scripts/check-app-url.js",

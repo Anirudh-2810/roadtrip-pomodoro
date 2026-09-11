@@ -1,6 +1,9 @@
+// Roadtrip Pomodoro — built by Anirudh-2810
+// https://github.com/Anirudh-2810/roadtrip-pomodoro — see src/lib/brand.ts
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import RoadtripCanvas from "./RoadtripCanvas";
+import { BRAND } from "@/lib/brand";
 import { ensureRoadtripAudio, setRoadtripVol } from "@/lib/audio-roadtrip";
 import { saveGuestSession, removeGuestSession } from "@/lib/guest";
 import { parsePreset } from "@/lib/validation";
@@ -91,6 +94,7 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
   const progress = total ? (total-remaining)/total : 0;
 
   useEffect(()=>{ fetch("/api/csrf").then(r=>r.json()).then(j=>setCsrf(j.csrf as string)).catch(()=>{}); }, []);
+  useEffect(()=>{ try{ console.info(`%c ${BRAND.signature} — ${BRAND.repo}`, "color:#10B981;font-weight:bold;"); }catch{} }, []);
   const dismissCover = useCallback(()=>{ try{ sessionStorage.setItem("rf_cover_dismissed","1"); }catch{}; setShowCover(false); }, []);
 
   useEffect(()=>{
@@ -165,7 +169,8 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
     if(!rows.length) return;
     const header="| Date | Route | Min | Intent | Done |\n|---|---|---|---|---|\n";
     const body=rows.map(r=> `| ${(String(r.finished_at)||"").slice(0,16).replace("T"," ")} | ${String(r.route??"")} | ${Number(r.duration_min??0)} | ${String(r.intent??"").replace(/\|/g,"/").slice(0,60)} | ${(r.completed?"✓":"—")} |`).join("\n");
-    const blob=new Blob([header+body+"\n"],{type:"text/markdown"}); const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=`roadtrip-log-${new Date().toISOString().slice(0,10)}.md`; a.click(); URL.revokeObjectURL(url);
+    const footer=`\n\n— Built with ${BRAND.app} by ${BRAND.maker} (${BRAND.repo})\n`;
+    const blob=new Blob([header+body+"\n"+footer],{type:"text/markdown"}); const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=`roadtrip-log-${new Date().toISOString().slice(0,10)}.md`; a.click(); URL.revokeObjectURL(url);
   };
 
   // --- Custom live sync: typing 1 or 1:30 updates timer — allow when paused, block while running/building ---
@@ -487,7 +492,7 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
   const onRoadCount = ROUTES.length;
 
   return (
-    <div className={"app-shell flex flex-col bg-[#070A0E] "+(isFullscreen?"is-fs-mode":"")} onMouseMove={resetHideTimer}>
+    <div data-maker="anirudh-2810" data-repo={BRAND.repo} className={"app-shell flex flex-col bg-[#070A0E] "+(isFullscreen?"is-fs-mode":"")} onMouseMove={resetHideTimer}>
       {showCover && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-[rgba(7,10,14,0.78)] p-5 backdrop-blur-[18px]" onClick={e=>{ if(e.target===e.currentTarget) dismissCover(); }}>
           <div className="flex w-[min(440px,92vw)] flex-col gap-3.5 rounded-[18px] border border-[rgba(30,42,51,0.92)] bg-[rgba(15,20,25,0.96)] p-5 text-center shadow-xl">

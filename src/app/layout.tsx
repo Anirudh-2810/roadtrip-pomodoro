@@ -28,6 +28,8 @@ export const metadata: Metadata = {
   title: "Roadtrip Pomodoro — Focus timer with email",
   description: "Production Pomodoro timer — Vercel + Supabase + Resend. Auto-email per session + daily/weekly digest. Continue without signup.",
   metadataBase: getBaseUrl(),
+  authors: [{ name: "Anirudh-2810", url: "https://github.com/Anirudh-2810/roadtrip-pomodoro" }],
+  creator: "Anirudh-2810",
 };
 
 export const dynamic = "force-dynamic";
@@ -82,7 +84,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         </header>
         <main className="flex-1">{children}</main>
         <footer className="border-t border-white/10 py-6 text-center text-[11px] text-zinc-600">
-          © {new Date().getFullYear()} Roadtrip Pomodoro · <a href="/legacy/index.html" className="hover:text-zinc-400">Legacy</a> · <a href="https://github.com/Anirudh-2810/roadtrip-pomodoro" className="hover:text-zinc-400">GitHub</a>
+          © {new Date().getFullYear()} Roadtrip Pomodoro · Built by <a href="https://github.com/Anirudh-2810/roadtrip-pomodoro" className="hover:text-zinc-400">Anirudh-2810</a> · <a href="/legacy/index.html" className="hover:text-zinc-400">Legacy</a>
         </footer>
       </body>
     </html>

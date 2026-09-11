@@ -1,6 +1,8 @@
-# Roadtrip Pomodoro — Production Pomodoro Web
+# Roadtrip Pomodoro ï¿½ Production Pomodoro Web
 
-Production-grade Pomodoro web app — Vercel + Supabase + Resend.
+> Built by [Anirudh-2810](https://github.com/Anirudh-2810/roadtrip-pomodoro)
+
+Production-grade Pomodoro web app ï¿½ Vercel + Supabase + Resend.
 
 - **Live**: https://roadtrip-pomodoro.vercel.app (after Vercel connect) + legacy Pages https://anirudh-2810.github.io/roadtrip-pomodoro/ (legacy/ fallback)
 - **Stack**: Next.js 16 App Router + TypeScript + Tailwind 4 + shadcn + Supabase (Auth/Postgres/RLS/pg_cron) + Resend (React Email) + Sentry
@@ -19,7 +21,7 @@ pnpm lint
 
 ## Env
 
-See `.env.example` — never commit `.env.local`. Get keys from Supabase Project Settings + Resend API Keys.
+See `.env.example` ï¿½ never commit `.env.local`. Get keys from Supabase Project Settings + Resend API Keys.
 
 ## Deploy
 
