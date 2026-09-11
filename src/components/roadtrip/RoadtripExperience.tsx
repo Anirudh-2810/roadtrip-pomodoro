@@ -169,8 +169,7 @@ export default function RoadtripExperience({ userEmail }: { userEmail: string | 
     if(!rows.length) return;
     const header="| Date | Route | Min | Intent | Done |\n|---|---|---|---|---|\n";
     const body=rows.map(r=> `| ${(String(r.finished_at)||"").slice(0,16).replace("T"," ")} | ${String(r.route??"")} | ${Number(r.duration_min??0)} | ${String(r.intent??"").replace(/\|/g,"/").slice(0,60)} | ${(r.completed?"✓":"—")} |`).join("\n");
-    const footer=`\n\n— Built with ${BRAND.app} by ${BRAND.maker} (${BRAND.repo})\n`;
-    const blob=new Blob([header+body+"\n"+footer],{type:"text/markdown"}); const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=`roadtrip-log-${new Date().toISOString().slice(0,10)}.md`; a.click(); URL.revokeObjectURL(url);
+    const blob=new Blob([header+body+"\n"],{type:"text/markdown"}); const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=`roadtrip-log-${new Date().toISOString().slice(0,10)}.md`; a.click(); URL.revokeObjectURL(url);
   };
 
   // --- Custom live sync: typing 1 or 1:30 updates timer — allow when paused, block while running/building ---
