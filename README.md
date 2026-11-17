@@ -2,7 +2,7 @@
 
 An endless-highway focus timer: pick an intent and a route, cruise through a 60fps winding-road canvas with procedural road hum, log trips, and get session + digest emails. Production-grade Next.js + Supabase + Resend on Vercel, with guest mode.
 
-- **Live**: `https://roadtrip-pomodoro.vercel.app`
+- **Live**: `https://roadtrip-pomodoro-taupe.vercel.app`
 - **Stack**: Next.js 16 App Router + TypeScript + Tailwind 4 + shadcn + Supabase (Auth / Postgres / RLS / pg_cron) + Resend (React Email)
 - **Timer**: 25 / 50 / 90 / 120 presets + custom minutes or `mm:ss` (1–180), Start / Pause / Resume / Reset, drift-free RAF clock, progress bar, km + cruise readout
 - **Road experience**: Canvas2D endless road (perspective winding, parallax hills, scrolling dashes + scenery, mini car), Web Audio 4s `brown/pink/white/rain` beds + 55/110 Hz hum, cover overlay, fullscreen HUD, `Space / R / M / F / Esc` shortcuts
