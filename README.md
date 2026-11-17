@@ -50,3 +50,7 @@ See `.env.example` — never commit `.env.local`. Get keys from Supabase Project
 ## Deploy
 
 Vercel: import the repo (Framework: Next.js, Root Directory `/`), add env vars, deploy `main`.
+
+## License
+
+Proprietary — Copyright (c) 2026 Anirudh Vijaykumar (github.com/Anirudh-2810). All rights reserved. See [LICENSE](LICENSE).
